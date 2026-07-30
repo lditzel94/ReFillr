@@ -62,7 +62,9 @@ Emulator lifecycle is scripted — see `scripts/README.md`:
 ./scripts/android/emulator/emulator.sh start     # or emulator.ps1 on native PowerShell
 ```
 
-*Verified against this build: `tasks`, `installDebug`, `testAndroidHostTest`. The web dev server task exists but has not yet been run end to end.*
+*Verified against this build: `tasks`, `installDebug`, `testAndroidHostTest`, `wasmJsBrowserDistribution`, `wasmJsBrowserDevelopmentRun`. Android renders the shared Compose UI on a device; web renders it at `http://localhost:8080/`.*
+
+First Wasm build takes ~7 minutes (downloads node, yarn and binaryen); later ones are fast. The dev server blocks the terminal — it does not return.
 
 ## Environment setup
 
@@ -131,8 +133,8 @@ Practical implication: keep session state and the "app is unlocked" gate as sepa
 
 ## Remaining first steps
 
-1. ~~Scaffold the KMP project structure~~ — done; Android verified end to end (shared Compose UI renders on device).
-2. Run the Wasm/Web build end to end, then add a PWA manifest + service worker.
+1. ~~Scaffold the KMP project structure~~ — done; Android and web both verified end to end, rendering the same shared Compose UI.
+2. Add a PWA manifest + service worker. Note the payload budget: the production Wasm bundle is already **~10.6 MB** (`skiko.wasm` 8.25 MB, app Wasm 1.84 MB, JS 518 KB) before a single feature exists. Skiko is Compose's Skia renderer and is not trimmable — plan caching around it rather than expecting it to shrink.
 3. Create the Supabase schema with RLS, and wire up `supabase-kt` with a basic auth flow.
 4. Build the item list screen: name, monthly usage, current quantity, computed "need to buy".
 5. Set up iOS CI so an iOS build is producible without a Mac — worth pulling earlier, per the constraint above.
