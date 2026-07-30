@@ -81,6 +81,11 @@ jobs:
       #
       # -target rather than -scheme: the wizard ships no shared scheme, and
       # schemes otherwise live in per-user xcuserdata, which is gitignored.
+      #
+      # Output location is set via SYMROOT rather than -derivedDataPath, because
+      # xcodebuild rejects -derivedDataPath unless -scheme is also given. SYMROOT
+      # is the -target-compatible equivalent and puts products in
+      # $SYMROOT/$CONFIGURATION-$PLATFORM.
       - name: Build unsigned app
         run: |
           xcodebuild \
@@ -88,20 +93,20 @@ jobs:
             -target iosApp \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath build/ios \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             EXPANDED_CODE_SIGN_IDENTITY="" \
+            SYMROOT="$PWD/build/ios" \
             build
 
       # An .ipa is just a zip with the .app inside a Payload/ directory.
       - name: Package .ipa
         run: |
-          APP_PATH="$(find build/ios/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -n 1)"
+          APP_PATH="$(find build/ios -maxdepth 3 -type d -name '*.app' | head -n 1)"
           if [ -z "$APP_PATH" ]; then
             echo "No .app produced; listing build products for diagnosis:"
-            find build/ios/Build/Products -maxdepth 2 || true
+            find build/ios -maxdepth 3 || true
             exit 1
           fi
           echo "Packaging $APP_PATH"
