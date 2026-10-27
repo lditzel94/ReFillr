@@ -49,7 +49,7 @@ src/app/
 
 ## Próximos pasos
 
-1. Supabase: esquema `households` / `household_members` / `items` con RLS, auth real y realtime
+1. Supabase (decisión tomada): esquema `households` / `household_members` / `items` con RLS, auth real y realtime
    para que varias cuentas compartan el mismo hogar.
 2. Hosting con HTTPS (GitHub Pages, Netlify, Vercel…) para instalarla en los teléfonos.
 3. Modo "en el súper" para ir tachando la lista.

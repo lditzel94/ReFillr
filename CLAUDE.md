@@ -53,20 +53,48 @@ Screens follow the Claude Design prototype at https://claude.ai/artifact/Qd7aRsK
 ("Nocturne" dark theme, Inter, accent `#9184d9`). Keep new UI consistent with its tokens in
 `src/styles.css`. Layout is a phone-width column (max 480px); there is no desktop design.
 
-## Data and backend
+## Locked technical decisions
 
-Today everything persists to `localStorage` through `core/local-store.ts`, and passwords are not
-checked. This is a placeholder: the planned backend is **Supabase** (auth, Postgres with Row Level
-Security, realtime sync between household members). Keep persistence behind `core/` services so the
-swap does not touch components.
+Settled; do not re-open or propose alternatives. They carry over from the KMP era, only the client
+stack changed.
 
-Planned schema (items belong to a household, never to a user):
+- **Client**: Angular PWA, mobile only. Installable on Android and iOS from the browser, so family
+  and friends can use it without app stores or iOS distribution costs.
+- **Backend/data**: Supabase via `@supabase/supabase-js`. Not a custom server, not local-only
+  storage. Chosen for minimal server maintenance, real Postgres, built-in auth and Row Level Security.
+- **Sync**: cross-device real-time (or near-real-time) sync is a requirement. This is a shared
+  household app: two accounts in the same household must both see and edit the same data.
+- **Development happens on Windows.** Never propose a workflow that needs a Mac or Xcode.
+
+## Data model and access control
+
+Multi-user household model: each person has their own Supabase Auth account, and a household groups
+them.
 
 ```sql
 households (id, name, invite_code, cycle_start)
 household_members (household_id, user_id)
 items (id, household_id, name, category, unit, monthly_usage, current_qty, updated_by, updated_at)
 ```
+
+Items belong to a **household**, never to an individual user. Row Level Security is the
+access-control mechanism: a user may read/write an item only if a `household_members` row links them
+to that item's `household_id`.
+
+## Current state: placeholder persistence
+
+Today everything persists to `localStorage` through `core/local-store.ts`, passwords are not checked,
+and joining by invite code only finds households created on the same device. Keep persistence
+behind the `core/` services (`AuthService`, `HouseholdService`, `InventoryStore`) so the Supabase
+swap does not touch components.
+
+## Roadmap
+
+1. ~~Scaffold the PWA and build the screens from the design~~ (done).
+2. Create the Supabase schema with RLS, replace the local auth/household/item persistence, and add
+   realtime subscriptions so household members see each other's changes.
+3. Host it over HTTPS (needed for install and the service worker on phones).
+4. "Shopping mode" list to tick off in-store, and category-level totals (from the design notes).
 
 ## Leave room for: biometric unlock
 
