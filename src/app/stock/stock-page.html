@@ -1,0 +1,112 @@
+<header class="top">
+  <div class="bar">
+    <app-logo [size]="20" />
+    <span class="eyebrow household truncate">{{ household()?.name }}</span>
+    @if (connectivity.online()) {
+      <span class="tag tag-outline sync" role="status">Sincronizado</span>
+    } @else {
+      <span class="tag tag-neutral sync" role="status">Sin conexión</span>
+    }
+    <button
+      type="button"
+      class="avatars"
+      (click)="sheet.set({ kind: 'household' })"
+      aria-label="Hogar y cuenta"
+    >
+      @for (a of avatars(); track a.id) {
+        <span class="avatar" [class.me]="a.me">{{ a.initial }}</span>
+      }
+    </button>
+  </div>
+
+  <div class="headline-row">
+    <h1 class="headline">{{ headline() }}</h1>
+    @if (!isEmpty()) {
+      <button type="button" class="btn btn-ghost new-cycle" (click)="newCycle()">
+        Nuevo ciclo
+      </button>
+    }
+  </div>
+
+  @if (cycle(); as c) {
+    <div class="cycle">
+      <div class="cycle-labels">
+        <span>{{ c.label }}</span>
+        <span>{{ c.right }}</span>
+      </div>
+      <div class="track"><div class="fill" [style.width.%]="c.pct"></div></div>
+    </div>
+  }
+</header>
+
+<main class="content">
+  @if (isEmpty()) {
+    <div class="empty">
+      <p>
+        Todavía no hay ítems en el hogar. Agregá lo que se usa en casa y cuánto se consume por mes.
+      </p>
+      <button type="button" class="btn btn-ghost" (click)="loadDemo()">
+        Cargar un stock de ejemplo
+      </button>
+    </div>
+  } @else {
+    @if (toBuy().length) {
+      <section aria-labelledby="to-buy-title">
+        <div class="section-head">
+          <h2 id="to-buy-title" class="eyebrow">Para comprar</h2>
+          <span class="count">{{ toBuySummary() }}</span>
+        </div>
+        <div class="cards">
+          @for (v of toBuy(); track v.item.id) {
+            <app-to-buy-card [view]="v" (edit)="openEdit(v.item.id)" (bought)="bought(v.item)" />
+          }
+        </div>
+      </section>
+    } @else {
+      <div class="all-stocked">Nada para comprar: todo está en su nivel mensual o por encima.</div>
+    }
+
+    <hr class="rule divider" />
+
+    @for (g of groups(); track g.category) {
+      <section class="group" [attr.aria-label]="categoryLabels[g.category]">
+        <div class="section-head">
+          <h2 class="eyebrow muted">{{ categoryLabels[g.category] }}</h2>
+          <span class="count dim">{{ g.count }}</span>
+        </div>
+        @for (v of g.items; track v.item.id) {
+          <app-stock-row
+            [view]="v"
+            (edit)="openEdit(v.item.id)"
+            (adjust)="adjust(v.item, $event)"
+          />
+        }
+      </section>
+    }
+  }
+</main>
+
+<footer class="bottom">
+  <button type="button" class="btn btn-primary btn-lg btn-block" (click)="openAdd()">
+    Agregar ítem
+  </button>
+</footer>
+
+@switch (sheet()?.kind) {
+  @case ('add') {
+    <app-item-sheet (saved)="save($event)" (closed)="closeSheet()" />
+  }
+  @case ('edit') {
+    @if (editing(); as item) {
+      <app-item-sheet
+        [item]="item"
+        (saved)="save($event)"
+        (deleted)="remove()"
+        (closed)="closeSheet()"
+      />
+    }
+  }
+  @case ('household') {
+    <app-household-sheet (closed)="closeSheet()" (signedOut)="signedOut()" />
+  }
+}

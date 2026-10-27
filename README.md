@@ -1,42 +1,55 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Web.
+# ReFillr
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+El stock de tu casa, siempre al día. Cada ítem guarda cuánto se usa por mes y cuánto hay en casa;
+la app calcula cuánto comprar para volver al nivel mensual:
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+```
+comprar = max(0, uso por mes − en casa)      // 12 cartones/mes, 2 en casa → comprar 10
+```
 
-### Running the apps
+Ir al súper se reduce a abrir la lista "Para comprar", tomar esas unidades y marcar cada ítem
+como comprado.
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+Es una **PWA mobile** hecha con **Angular 22** (zoneless, signals, Signal Forms y el control flow
+nuevo de templates). Se instala desde el navegador, incluido iPhone ("Compartir → Agregar a
+inicio"), sin tiendas ni costos de distribución.
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- Web app:
-  - Wasm target (faster, modern browsers): `./gradlew :webApp:wasmJsBrowserDevelopmentRun`
-  - JS target (slower, supports older browsers): `./gradlew :webApp:jsBrowserDevelopmentRun`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+## Correr el proyecto
 
-### Running tests
+Requiere Node 22.22.3+ o 24.15+.
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+```bash
+npm install
+npm start                      # http://localhost:4200
+npx ng test --watch=false      # tests unitarios (Vitest)
+npx ng build                   # build de producción en dist/refillr/browser
+```
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Web tests:
-  - Wasm target: `./gradlew :shared:wasmJsTest`
-  - JS target: `./gradlew :shared:jsTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+El service worker sólo se activa en el build de producción. Para probar la instalación como app,
+serví `dist/refillr/browser` por HTTPS (o `localhost`).
 
----
+## Estructura
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+```
+src/app/
+  core/      dominio y estado: modelos, reglas de stock, servicios con signals, guards
+  auth/      ingresar, crear cuenta, crear/unirse a un hogar
+  stock/     pantalla principal, tarjetas "para comprar", filas con stepper, hojas de edición
+  shared/    piezas reutilizables (bottom sheet, toast, logo, errores de formulario)
+```
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+## Estado actual
+
+- Las pantallas siguen el prototipo de diseño (tema oscuro "Nocturne", mobile-first).
+- **Los datos viven en `localStorage`**: cuentas, hogares e ítems quedan en el dispositivo y la
+  contraseña todavía no se valida. Todo el acceso pasa por `core/` para poder cambiarlo por
+  Supabase sin tocar los componentes.
+- El indicador "Sincronizado / Sin conexión" refleja la conectividad real; los cambios hechos sin
+  conexión quedan marcados como *pendiente* hasta volver a estar online.
+
+## Próximos pasos
+
+1. Supabase: esquema `households` / `household_members` / `items` con RLS, auth real y realtime
+   para que varias cuentas compartan el mismo hogar.
+2. Hosting con HTTPS (GitHub Pages, Netlify, Vercel…) para instalarla en los teléfonos.
+3. Modo "en el súper" para ir tachando la lista.
