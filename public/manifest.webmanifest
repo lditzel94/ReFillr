@@ -1,0 +1,18 @@
+{
+  "name": "ReFillr",
+  "short_name": "ReFillr",
+  "description": "El stock de tu casa, siempre al día: sabé qué comprar sin hacer inventario.",
+  "lang": "es",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "./",
+  "start_url": "./",
+  "theme_color": "#161826",
+  "background_color": "#161826",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

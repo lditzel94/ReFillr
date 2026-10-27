@@ -4,120 +4,16 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
-
-# A newer push makes an in-flight run pointless. Cancel it rather than let it
-# finish -- on macOS runners that is the difference between a cheap mistake and
-# an expensive one.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
-  # Everything that does not genuinely require macOS runs here. Linux bills at
-  # 1x versus macOS at 10x, and this job catches the overwhelming majority of
-  # commonMain breakage -- so it should fail fast, before any Apple work starts.
-  shared:
-    name: Shared code (Linux)
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-node@v4
         with:
-          distribution: temurin
-          java-version: 21
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: Compile shared code
-        run: ./gradlew :shared:compileKotlinMetadata --stacktrace
-
-      - name: Run shared tests
-        run: ./gradlew :shared:testAndroidHostTest --stacktrace
-
-      - name: Build web distribution
-        run: ./gradlew :webApp:wasmJsBrowserDistribution --stacktrace
-
-      - name: Upload web build
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: webApp/build/dist/wasmJs/productionExecutable/
-          if-no-files-found: warn
-
-  # Only the work that cannot happen anywhere but macOS. Kotlin/Native Apple
-  # targets need the Xcode toolchain to link, so this job is the ONLY place iOS
-  # is ever verified -- development happens on Windows with no local Xcode.
-  ios:
-    name: iOS (macOS)
-    needs: shared
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      # The Kotlin/Native toolchain is a large download and is not part of the
-      # Gradle cache. Without this, every cold run pays for it again.
-      - name: Cache Kotlin/Native toolchain
-        uses: actions/cache@v4
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: konan-${{ runner.os }}-
-
-      - name: Link iOS framework
-        run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace
-
-      # Built with signing disabled: this produces an .ipa that Sideloadly signs
-      # locally with a personal Apple ID. No Apple Developer Program needed, and
-      # nothing here touches the App Store.
-      #
-      # -target rather than -scheme: the wizard ships no shared scheme, and
-      # schemes otherwise live in per-user xcuserdata, which is gitignored.
-      #
-      # Output location is set via SYMROOT rather than -derivedDataPath, because
-      # xcodebuild rejects -derivedDataPath unless -scheme is also given. SYMROOT
-      # is the -target-compatible equivalent and puts products in
-      # $SYMROOT/$CONFIGURATION-$PLATFORM.
-      - name: Build unsigned app
-        run: |
-          xcodebuild \
-            -project iosApp/iosApp.xcodeproj \
-            -target iosApp \
-            -configuration Release \
-            -sdk iphoneos \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            EXPANDED_CODE_SIGN_IDENTITY="" \
-            SYMROOT="$PWD/build/ios" \
-            build
-
-      # An .ipa is just a zip with the .app inside a Payload/ directory.
-      - name: Package .ipa
-        run: |
-          APP_PATH="$(find build/ios -maxdepth 3 -type d -name '*.app' | head -n 1)"
-          if [ -z "$APP_PATH" ]; then
-            echo "No .app produced; listing build products for diagnosis:"
-            find build/ios -maxdepth 3 || true
-            exit 1
-          fi
-          echo "Packaging $APP_PATH"
-          mkdir -p Payload
-          cp -R "$APP_PATH" Payload/
-          zip -qr ReFillr-unsigned.ipa Payload
-          ls -lh ReFillr-unsigned.ipa
-
-      - name: Upload unsigned .ipa
-        uses: actions/upload-artifact@v4
-        with:
-          name: ReFillr-unsigned-ipa
-          path: ReFillr-unsigned.ipa
-          if-no-files-found: error
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx ng test --watch=false
+      - run: npx ng build
