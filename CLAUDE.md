@@ -34,7 +34,21 @@ Node 22.22.3+ or 24.15+ (the Angular 22 CLI refuses older versions).
 npm start                    # dev server, http://localhost:4200
 npx ng test --watch=false    # Vitest unit tests
 npx ng build                 # production build -> dist/refillr/browser (service worker included)
+npm run preview              # production build served by wrangler, like Cloudflare Pages does
 ```
+
+## Deploy
+
+Hosted on **Cloudflare Pages** (Direct Upload, not Pages' Git integration). `.github/workflows/ci.yml`
+tests and builds every push and PR, then runs `wrangler pages deploy`: `main` goes to production, a
+PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets:
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`; optional repo variable `CLOUDFLARE_PAGES_PROJECT`
+(default `refillr`). Without the secrets the deploy job is skipped, not failed.
+
+- SPA routing relies on Pages' default: with no top-level `404.html`, unknown paths serve
+  `index.html`. Do not add a `404.html` or a `/* /index.html 200` redirect.
+- `public/_headers` keeps the service worker files revalidated and caches hashed bundles forever.
+- `core/app-update.ts` + `shared/update-banner.ts` offer the new version when a deploy lands.
 
 ## Layout
 
@@ -46,6 +60,7 @@ npx ng build                 # production build -> dist/refillr/browser (service
 | `src/app/shared/` | Bottom sheet, toast host, logo, field error |
 | `src/styles.css` | Design tokens and shared classes (`.btn`, `.input`, `.tag`, `.card`, `.rule`) |
 | `ngsw-config.json`, `public/manifest.webmanifest` | PWA |
+| `public/_headers`, `.github/workflows/ci.yml` | Cloudflare Pages caching rules, CI and deploy |
 
 ## Design source
 
@@ -93,7 +108,7 @@ swap does not touch components.
 1. ~~Scaffold the PWA and build the screens from the design~~ (done).
 2. Create the Supabase schema with RLS, replace the local auth/household/item persistence, and add
    realtime subscriptions so household members see each other's changes.
-3. Host it over HTTPS (needed for install and the service worker on phones).
+3. ~~Host it over HTTPS~~ (Cloudflare Pages, deployed from GitHub Actions).
 4. "Shopping mode" list to tick off in-store, and category-level totals (from the design notes).
 
 ## Leave room for: biometric unlock

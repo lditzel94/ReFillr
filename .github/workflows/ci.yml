@@ -1,3 +1,5 @@
+# Build and test on every push and pull request, then deploy to Cloudflare Pages:
+# pushes to main go to production, pull requests get their own preview URL.
 name: CI
 
 on:
@@ -5,15 +7,126 @@ on:
     branches: [main]
   pull_request:
 
+# A newer push to the same branch or PR supersedes the run in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: 24 # the Angular 22 CLI needs 22.22.3+ or 24.15+
           cache: npm
       - run: npm ci
       - run: npx ng test --watch=false
       - run: npx ng build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/refillr/browser
+          retention-days: 7
+
+  deploy:
+    needs: build
+    # Pull requests from forks never see the repository secrets, so they stop at the build.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # comment the preview URL on the PR
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'refillr' }}
+      # On a PR, deploy under the PR's branch name so Pages treats it as a preview.
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      WRANGLER_OUTPUT_FILE_PATH: ${{ github.workspace }}/wrangler-output.jsonl
+    steps:
+      - name: Check Cloudflare credentials
+        id: creds
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set; skipping the deploy."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Wrangler comes from package-lock.json, the same version used locally.
+      - uses: actions/checkout@v5
+        if: steps.creds.outputs.ok == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.creds.outputs.ok == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: steps.creds.outputs.ok == 'true'
+      - uses: actions/download-artifact@v4
+        if: steps.creds.outputs.ok == 'true'
+        with:
+          name: site
+          path: site
+
+      - name: Create the Pages project on first deploy
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          if npx wrangler pages project list --json | jq -e --arg n "$PROJECT" 'any(.[]; ."Project Name" == $n)' > /dev/null; then
+            echo "Pages project '$PROJECT' already exists."
+          else
+            npx wrangler pages project create "$PROJECT" --production-branch=main
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          # --commit-dirty: the downloaded build sits untracked inside the checkout.
+          npx wrangler pages deploy site --project-name="$PROJECT" --branch="$BRANCH" --commit-dirty=true
+          details=$(jq -c 'select(.type == "pages-deploy-detailed")' "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)
+          url=$(jq -r '.url' <<< "$details")
+          alias=$(jq -r '.alias // .url' <<< "$details")
+          env=$(jq -r '.environment' <<< "$details")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "alias=$alias" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Cloudflare Pages ($env)"
+            echo ""
+            echo "- Deploy: $url"
+            echo "- Alias: $alias"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment the preview URL on the PR
+        if: steps.creds.outputs.ok == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          ALIAS: ${{ steps.deploy.outputs.alias }}
+        with:
+          script: |
+            const marker = '<!-- cloudflare-pages-preview -->';
+            const body = [
+              marker,
+              `**Preview en Cloudflare Pages**`,
+              ``,
+              `- Este commit: ${process.env.URL}`,
+              `- Última versión de la rama: ${process.env.ALIAS}`,
+              ``,
+              `_Commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
