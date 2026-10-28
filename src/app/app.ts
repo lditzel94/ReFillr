@@ -1,14 +1,16 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ToastHost } from './shared/toast-host';
+import { UpdateBanner } from './shared/update-banner';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ToastHost],
+  imports: [RouterOutlet, ToastHost, UpdateBanner],
   template: `
     <div class="phone">
       <router-outlet />
       <app-toast-host />
+      <app-update-banner />
     </div>
   `,
   styles: `
