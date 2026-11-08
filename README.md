@@ -38,7 +38,7 @@ publica en Cloudflare Pages con `wrangler pages deploy`:
 - PR → preview en una URL propia, que el workflow comenta en el PR
 
 El proyecto de Pages (y el de Supabase) los crea el programa de Pulumi en [`infra/`](infra/README.md),
-escrito en Go. El CI sólo publica builds en un proyecto que ya existe.
+escrito en TypeScript. El CI sólo publica builds en un proyecto que ya existe.
 
 Configuración, una sola vez:
 

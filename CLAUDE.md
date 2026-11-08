@@ -45,14 +45,15 @@ PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets:
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. Without the secrets the deploy job is skipped, not
 failed.
 
-Infrastructure is code: `infra/` is a **Pulumi program in Go** (Luciano's preferred language; keep
-it in Go) that owns the Pages project `refillr`, the Supabase project and its auth settings. State
-is in Pulumi Cloud (project `refillr-infra`, stack `prod`); the same Pulumi account also holds
-another product of Luciano's, so never run Pulumi commands against it from a session, and keep
-provider tokens in the stack config rather than environment variables. `pulumi up` is run by hand;
-CI only checks that the program compiles. The Supabase provider is the Terraform one, bridged: its
-Go SDK is generated into `infra/sdks/` by `pulumi install` (git-ignored). Database schema and RLS go
-in Supabase migrations, not Pulumi.
+Infrastructure is code: `infra/` is a **Pulumi program in TypeScript** (Luciano tried Go and chose
+TypeScript, since the language changes nothing in the result) that owns the Pages project `refillr`,
+the Supabase project and its auth settings. State is in Pulumi Cloud (project `refillr-infra`, stack
+`prod`); the same Pulumi account also holds another product of Luciano's, so never run Pulumi
+commands against it from a session, and keep provider tokens in the stack config rather than
+environment variables. `pulumi up` is run by hand; CI only type-checks the program. The Supabase
+provider is the Terraform one, bridged: `pulumi install` generates its SDK into `infra/sdks/`
+(git-ignored) and links it as `@pulumi/supabase`. Database schema and RLS go in Supabase migrations,
+not Pulumi.
 
 - SPA routing relies on Pages' default: with no top-level `404.html`, unknown paths serve
   `index.html`. Do not add a `404.html` or a `/* /index.html 200` redirect.
@@ -70,7 +71,7 @@ in Supabase migrations, not Pulumi.
 | `src/styles.css` | Design tokens and shared classes (`.btn`, `.input`, `.tag`, `.card`, `.rule`) |
 | `ngsw-config.json`, `public/manifest.webmanifest` | PWA |
 | `public/_headers`, `.github/workflows/ci.yml` | Cloudflare Pages caching rules, CI and deploy |
-| `infra/` | Pulumi (Go): Pages project, Supabase project and auth settings |
+| `infra/` | Pulumi (TypeScript): Pages project, Supabase project and auth settings |
 
 ## Design source
 
