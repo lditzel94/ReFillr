@@ -1,8 +1,11 @@
 name: refillr-infra
 description: Cloudflare Pages and Supabase for ReFillr
-runtime: go
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
 # Supabase has no native Pulumi provider: its Terraform provider is bridged, and `pulumi install`
-# generates the Go SDK into sdks/supabase (git-ignored, see go.mod's replace directive).
+# generates the Node SDK into sdks/supabase (git-ignored), linked as @pulumi/supabase.
 packages:
   supabase:
     source: terraform-provider

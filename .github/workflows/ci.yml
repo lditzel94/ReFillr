@@ -44,15 +44,12 @@ jobs:
       PULUMI_BACKEND_URL: file://${{ github.workspace }}/.pulumi-local
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-node@v5
         with:
-          go-version-file: infra/go.mod
-          cache-dependency-path: infra/go.sum
+          node-version: 24
       - uses: pulumi/actions@v6 # installs the CLI only, since no command is given
-      - run: pulumi install # plugins + the generated Supabase SDK in sdks/
-      - run: go mod tidy # records go.sum entries for the generated SDK
-      - run: go vet ./...
-      - run: go build -o /dev/null .
+      - run: pulumi install # generates the Supabase SDK in sdks/, then npm install
+      - run: npm run typecheck
 
   deploy:
     needs: build
