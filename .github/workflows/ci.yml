@@ -33,6 +33,27 @@ jobs:
           path: dist/refillr/browser
           retention-days: 7
 
+  # The Pulumi program only has to compile here; `pulumi up` runs by hand against Pulumi Cloud.
+  infra:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    env:
+      # `pulumi install` needs no account; a local backend keeps it from asking for a login.
+      PULUMI_BACKEND_URL: file://${{ github.workspace }}/.pulumi-local
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: infra/go.mod
+          cache-dependency-path: infra/go.sum
+      - uses: pulumi/actions@v6 # installs the CLI only, since no command is given
+      - run: pulumi install # plugins + the generated Supabase SDK in sdks/
+      - run: go mod tidy # records go.sum entries for the generated SDK
+      - run: go vet ./...
+      - run: go build -o /dev/null .
+
   deploy:
     needs: build
     # Pull requests from forks never see the repository secrets, so they stop at the build.
@@ -44,7 +65,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'refillr' }}
+      # Created by the Pulumi program in infra/, not here.
+      PROJECT: refillr
       # On a PR, deploy under the PR's branch name so Pages treats it as a preview.
       BRANCH: ${{ github.head_ref || github.ref_name }}
       WRANGLER_OUTPUT_FILE_PATH: ${{ github.workspace }}/wrangler-output.jsonl
@@ -74,15 +96,6 @@ jobs:
         with:
           name: site
           path: site
-
-      - name: Create the Pages project on first deploy
-        if: steps.creds.outputs.ok == 'true'
-        run: |
-          if npx wrangler pages project list --json | jq -e --arg n "$PROJECT" 'any(.[]; ."Project Name" == $n)' > /dev/null; then
-            echo "Pages project '$PROJECT' already exists."
-          else
-            npx wrangler pages project create "$PROJECT" --production-branch=main
-          fi
 
       - name: Deploy to Cloudflare Pages
         id: deploy

@@ -42,8 +42,17 @@ npm run preview              # production build served by wrangler, like Cloudfl
 Hosted on **Cloudflare Pages** (Direct Upload, not Pages' Git integration). `.github/workflows/ci.yml`
 tests and builds every push and PR, then runs `wrangler pages deploy`: `main` goes to production, a
 PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets:
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`; optional repo variable `CLOUDFLARE_PAGES_PROJECT`
-(default `refillr`). Without the secrets the deploy job is skipped, not failed.
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. Without the secrets the deploy job is skipped, not
+failed.
+
+Infrastructure is code: `infra/` is a **Pulumi program in Go** (Luciano's preferred language; keep
+it in Go) that owns the Pages project `refillr`, the Supabase project and its auth settings. State
+is in Pulumi Cloud (project `refillr-infra`, stack `prod`); the same Pulumi account also holds
+another product of Luciano's, so never run Pulumi commands against it from a session, and keep
+provider tokens in the stack config rather than environment variables. `pulumi up` is run by hand;
+CI only checks that the program compiles. The Supabase provider is the Terraform one, bridged: its
+Go SDK is generated into `infra/sdks/` by `pulumi install` (git-ignored). Database schema and RLS go
+in Supabase migrations, not Pulumi.
 
 - SPA routing relies on Pages' default: with no top-level `404.html`, unknown paths serve
   `index.html`. Do not add a `404.html` or a `/* /index.html 200` redirect.
@@ -61,6 +70,7 @@ PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets:
 | `src/styles.css` | Design tokens and shared classes (`.btn`, `.input`, `.tag`, `.card`, `.rule`) |
 | `ngsw-config.json`, `public/manifest.webmanifest` | PWA |
 | `public/_headers`, `.github/workflows/ci.yml` | Cloudflare Pages caching rules, CI and deploy |
+| `infra/` | Pulumi (Go): Pages project, Supabase project and auth settings |
 
 ## Design source
 

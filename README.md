@@ -34,20 +34,19 @@ serví `dist/refillr/browser` por HTTPS (o `localhost`).
 El workflow `.github/workflows/ci.yml` corre los tests y el build en cada push y PR, y después
 publica en Cloudflare Pages con `wrangler pages deploy`:
 
-- push a `main` → producción (`https://<proyecto>.pages.dev`)
+- push a `main` → producción (`https://refillr.pages.dev`)
 - PR → preview en una URL propia, que el workflow comenta en el PR
+
+El proyecto de Pages (y el de Supabase) los crea el programa de Pulumi en [`infra/`](infra/README.md),
+escrito en Go. El CI sólo publica builds en un proyecto que ya existe.
 
 Configuración, una sola vez:
 
-1. Creá una cuenta en Cloudflare (el plan Free alcanza).
-2. Copiá tu **Account ID** (en el dashboard, *Workers & Pages* → panel derecho, o en la URL).
-3. Creá un **API token** en *My Profile → API Tokens → Create Token → Custom token* con el permiso
-   *Account → Cloudflare Pages → Edit*, limitado a tu cuenta.
-4. En GitHub: *Settings → Secrets and variables → Actions* → agregá `CLOUDFLARE_API_TOKEN` y
-   `CLOUDFLARE_ACCOUNT_ID`. Opcional: la variable `CLOUDFLARE_PAGES_PROJECT` si no querés que el
-   proyecto se llame `refillr`.
+1. Seguí [`infra/README.md`](infra/README.md) hasta el `pulumi up`.
+2. En GitHub: *Settings → Secrets and variables → Actions* → agregá `CLOUDFLARE_API_TOKEN` (con
+   *Account → Cloudflare Pages → Edit*) y `CLOUDFLARE_ACCOUNT_ID`.
 
-El primer deploy crea el proyecto de Pages solo. Sin los secrets, el job de deploy se saltea.
+Sin los secrets, el job de deploy se saltea.
 
 ## Estructura
 
