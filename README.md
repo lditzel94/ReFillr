@@ -23,10 +23,31 @@ npm install
 npm start                      # http://localhost:4200
 npx ng test --watch=false      # tests unitarios (Vitest)
 npx ng build                   # build de producción en dist/refillr/browser
+npm run preview                # build de producción servido con wrangler, igual que en Cloudflare
 ```
 
 El service worker sólo se activa en el build de producción. Para probar la instalación como app,
 serví `dist/refillr/browser` por HTTPS (o `localhost`).
+
+## Deploy (Cloudflare Pages)
+
+El workflow `.github/workflows/ci.yml` corre los tests y el build en cada push y PR, y después
+publica en Cloudflare Pages con `wrangler pages deploy`:
+
+- push a `main` → producción (`https://refillr.pages.dev`)
+- PR → preview en una URL propia, que el workflow comenta en el PR
+
+El proyecto de Pages (y el de Supabase) los crea el programa de Pulumi en [`infra/`](infra/README.md),
+escrito en TypeScript. El CI sólo publica builds en un proyecto que ya existe.
+
+Configuración, una sola vez:
+
+1. Seguí [`infra/README.md`](infra/README.md) hasta el `pulumi up`.
+2. En GitHub: *Settings → Environments*, creá dos environments, `production` (con *Deployment
+   branches* limitado a `main`) y `preview`, y en cada uno agregá los secrets `CLOUDFLARE_API_TOKEN`
+   (con *Account → Cloudflare Pages → Edit*) y `CLOUDFLARE_ACCOUNT_ID`.
+
+Sin los secrets, el job de deploy se saltea.
 
 ## Estructura
 
@@ -51,5 +72,4 @@ src/app/
 
 1. Supabase (decisión tomada): esquema `households` / `household_members` / `items` con RLS, auth real y realtime
    para que varias cuentas compartan el mismo hogar.
-2. Hosting con HTTPS (GitHub Pages, Netlify, Vercel…) para instalarla en los teléfonos.
-3. Modo "en el súper" para ir tachando la lista.
+2. Modo "en el súper" para ir tachando la lista.
