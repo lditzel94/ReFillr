@@ -1,53 +1,55 @@
 # ReFillr
 
-Stock casero compartido: cada hogar sabe qué tiene en casa y cuánto le falta para llegar a su consumo
-del mes, así hacer las compras es ir y tomar las unidades faltantes.
+Shared household stock: each household knows what it has at home and how much it is short of its monthly
+usage, so shopping is just picking up the missing units. The term in bold is the one code uses; "UI" is
+the Spanish word the person sees.
 
-## Personas y acceso
+## People and access
 
-**Hogar**:
-El grupo de personas que comparte un mismo stock. Los ítems son del hogar, nunca de una persona.
-_Avoid_: casa, familia, grupo, household
+**Household** (UI: hogar):
+The group of people who share one stock. Items belong to the household, never to a person.
+_Avoid_: home, family, group
 
-**Miembro**:
-Una persona que pertenece a un hogar. Cada persona es miembro de un solo hogar.
-_Avoid_: usuario (para hablar del hogar), integrante
+**Member** (UI: miembro):
+A person who belongs to a household. Each person is a member of exactly one household.
+_Avoid_: user (when talking about a household), participant
 
-**Administrador**:
-La persona que da de alta cuentas y arma hogares. Ningún miembro puede sacarlo de un hogar.
-_Avoid_: dueño, admin del hogar
+**Admin** (UI: administrador):
+The one person who creates accounts and sets up households. No member can remove the admin from a household.
+_Avoid_: owner, household admin
 
 ## Stock
 
-**Ítem**:
-Algo que el hogar consume y repone, con su categoría, su unidad, su consumo mensual y lo que hay en casa.
-_Avoid_: producto, artículo
+**Item** (UI: ítem):
+Something the household uses up and buys again, with its category, unit, monthly usage and quantity on hand.
+_Avoid_: product, article
 
-**Categoría**:
-El grupo en que se ordena un ítem en la lista (Despensa, Baño, Limpieza, o una que cree el hogar).
-_Avoid_: sección, rubro
+**Category** (UI: categoría):
+The group an item is listed under. Every household has the three base categories (Despensa, Baño, Limpieza)
+and may add its own.
+_Avoid_: section, aisle
 
-**Unidad**:
-Cómo se cuenta un ítem (rollos, cartones, paquetes). Es texto libre; nunca se convierte entre unidades.
-_Avoid_: medida
+**Unit** (UI: unidad):
+How an item is counted (rolls, cartons, packs). Free text; never converted between units.
+_Avoid_: measure
 
-**Consumo mensual**:
-Cuántas unidades de un ítem usa el hogar en un mes. Es el nivel al que se quiere volver al comprar.
-_Avoid_: stock objetivo, mínimo
+**Monthly usage** (UI: consumo mensual):
+How many units of an item the household uses in a month; the level a purchase brings it back to.
+_Avoid_: target stock, minimum
 
-**En casa**:
-Cuántas unidades de un ítem hay ahora.
-_Avoid_: stock actual, cantidad
+**Current quantity** (UI: en casa):
+How many units of an item are at home now.
+_Avoid_: stock, amount
 
-**Falta comprar**:
-Lo que separa lo que hay en casa del consumo mensual; nunca es negativo.
-_Avoid_: faltante, déficit
+**Need to buy** (UI: falta comprar):
+The gap between the current quantity and the monthly usage; never negative.
+_Avoid_: shortfall, deficit
 
-**Reponer**:
-Marcar un ítem como comprado: lo que hay en casa vuelve al consumo mensual.
-_Avoid_: restock, comprar (como acción en la app)
+**Restock** (UI: reponer):
+Marking an item as bought: its current quantity goes back up to its monthly usage.
+_Avoid_: purchase, refill
 
-**Ciclo**:
-El mes de compras del hogar, desde que alguien toca "Nuevo ciclo". Es solo una referencia visual: lo que
-falta comprar no depende del ciclo.
-_Avoid_: período, mes
+**Cycle** (UI: ciclo):
+The household's shopping month, from when someone taps "Nuevo ciclo". A visual reference only: what needs
+buying does not depend on it.
+_Avoid_: period, month

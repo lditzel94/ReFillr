@@ -8,7 +8,9 @@ Household stock tracker. Each item records how much is used per month and how mu
 app computes what to buy to get back to the monthly level:
 `needToBuy = max(0, monthlyUsage - currentQty)` (see `src/app/core/stock.ts`).
 
-The UI is in Spanish (rioplatense voseo: "Agregá", "Vos"). The user writes in Spanish.
+The UI is in Spanish (rioplatense voseo: "Agregá", "Vos"). The user writes in Spanish. Code, file
+names, script names and URL routes are in English; only what the person sees (UI text, emails) is
+Spanish. Domain names in code follow `GLOSSARY.md`.
 
 ## Project intent
 
