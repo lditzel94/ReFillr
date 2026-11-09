@@ -1,0 +1,9 @@
+config:
+  refillr-infra:cloudflareAccountId: 1cd6f8e6443f7fccc8e39808e76aa7e2
+  refillr-infra:supabaseOrgId: fqnhwkathkpxngpaleap
+  refillr-infra:dbPassword:
+    secure: AAABAMnCinwRfKsPYQgJmEwoR3Y5xwVtxeXp7ssq1jt/iNcHeAJ6wrbFuU323SU=
+  cloudflare:apiToken:
+    secure: AAABAO3zBV0SCChE51KUMa0XV4AfJ1lkDWrZ0rIw9+20iA09DXyBB5eRJzy2NWzEPfOdRXXtoy8HNESEF3f6e/jUOr4SyFlXjfH7bCY6IrCksYa9Cg==
+  supabase:accessToken:
+    secure: AAABAF0PVhHGopE20+AQOXGJy8d5F9ALSjysknxz4xLYqSHJ9jPR0p176nXk86Yn2FDIrYZxI1s1oqUpTth303tWeo9KTB9WnCxbIQ==
