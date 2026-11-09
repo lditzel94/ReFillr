@@ -13,6 +13,10 @@ _Avoid_: casa, familia, grupo, household
 Una persona que pertenece a un hogar. Cada persona es miembro de un solo hogar.
 _Avoid_: usuario (para hablar del hogar), integrante
 
+**Administrador**:
+La persona que da de alta cuentas y arma hogares. Ningún miembro puede sacarlo de un hogar.
+_Avoid_: dueño, admin del hogar
+
 ## Stock
 
 **Ítem**:
