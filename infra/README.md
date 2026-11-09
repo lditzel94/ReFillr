@@ -11,8 +11,18 @@ Este programa declara lo que tiene que existir para que ReFillr funcione:
 Lo que **no** está acá: el esquema de la base (va en migraciones de Supabase) y los deploys de la
 app (los hace `.github/workflows/ci.yml` con wrangler).
 
-El estado vive en Pulumi Cloud, en el proyecto `refillr-infra`, stack `prod`. No comparte nada con
-otros proyectos de la misma cuenta de Pulumi: cada proyecto y stack tiene su propio estado.
+El estado vive en Pulumi Cloud, en el proyecto `refillr-infra`, stack `prod`. El backend está fijado
+en `Pulumi.yaml` (`backend.url`), así que este proyecto usa Pulumi Cloud aunque la CLI esté logueada
+en otro backend (por ejemplo, un bucket S3 de otro proyecto). La primera vez, guardá el token de
+Pulumi Cloud sin cambiar el login de los otros proyectos:
+
+1. Anotá el backend actual: es el valor de `"current"` en `%USERPROFILE%\.pulumi\credentials.json`.
+2. Logueate en Pulumi Cloud y volvé a dejar el anterior como actual:
+
+   ```sh
+   pulumi login https://api.pulumi.com   # abre el navegador; guarda el token de Pulumi Cloud
+   pulumi login <backend-anotado>        # el resto de tus proyectos sigue como antes
+   ```
 
 ## Primera vez
 
@@ -34,7 +44,7 @@ Desde esta carpeta (`infra/`), siempre: así Pulumi usa este `Pulumi.yaml` y no 
 3. Stack y configuración. Los `--secret` quedan cifrados en `Pulumi.prod.yaml`, que se commitea:
 
    ```sh
-   pulumi whoami -v                  # confirmá la cuenta / organización
+   pulumi whoami -v                  # tiene que decir Backend URL: https://app.pulumi.com/...
    pulumi stack init prod
    pulumi config set cloudflareAccountId <account-id>
    pulumi config set supabaseOrgId <org-id>

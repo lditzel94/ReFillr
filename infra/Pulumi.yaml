@@ -1,5 +1,9 @@
 name: refillr-infra
 description: Cloudflare Pages and Supabase for ReFillr
+# Pinned so this project always uses Pulumi Cloud, whatever backend the CLI is logged into for
+# other projects on the same machine.
+backend:
+  url: https://api.pulumi.com
 runtime:
   name: nodejs
   options:
