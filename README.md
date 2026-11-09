@@ -43,8 +43,9 @@ escrito en TypeScript. El CI sólo publica builds en un proyecto que ya existe.
 Configuración, una sola vez:
 
 1. Seguí [`infra/README.md`](infra/README.md) hasta el `pulumi up`.
-2. En GitHub: *Settings → Secrets and variables → Actions* → agregá `CLOUDFLARE_API_TOKEN` (con
-   *Account → Cloudflare Pages → Edit*) y `CLOUDFLARE_ACCOUNT_ID`.
+2. En GitHub: *Settings → Environments*, creá dos environments, `production` (con *Deployment
+   branches* limitado a `main`) y `preview`, y en cada uno agregá los secrets `CLOUDFLARE_API_TOKEN`
+   (con *Account → Cloudflare Pages → Edit*) y `CLOUDFLARE_ACCOUNT_ID`.
 
 Sin los secrets, el job de deploy se saltea.
 

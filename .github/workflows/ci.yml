@@ -56,6 +56,11 @@ jobs:
     # Pull requests from forks never see the repository secrets, so they stop at the build.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    # The Cloudflare secrets live in two GitHub environments: `production` (only main may use it)
+    # and `preview` (pull requests). Each deploy shows up under the environment with its URL.
+    environment:
+      name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      url: ${{ steps.deploy.outputs.alias }}
     permissions:
       contents: read
       pull-requests: write # comment the preview URL on the PR

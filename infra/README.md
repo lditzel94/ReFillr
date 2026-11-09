@@ -83,8 +83,8 @@ Desde esta carpeta (`infra/`), siempre: así Pulumi usa este `Pulumi.yaml` y no 
    pulumi stack output   # siteUrl y supabaseUrl
    ```
 
-5. Recién ahora cargá `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` en los secrets de GitHub
-   Actions: el deploy del CI necesita que el proyecto de Pages ya exista.
+5. Recién ahora cargá `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` en los environments
+   `production` y `preview` de GitHub (ver el README de la raíz): el deploy del CI necesita que el proyecto de Pages ya exista.
 
 ## Si el proyecto de Pages ya existe
 

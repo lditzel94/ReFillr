@@ -41,8 +41,9 @@ npm run preview              # production build served by wrangler, like Cloudfl
 
 Hosted on **Cloudflare Pages** (Direct Upload, not Pages' Git integration). `.github/workflows/ci.yml`
 tests and builds every push and PR, then runs `wrangler pages deploy`: `main` goes to production, a
-PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets:
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. Without the secrets the deploy job is skipped, not
+PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` are environment secrets, in both GitHub environments
+`production` (main only) and `preview` (PRs); the deploy job picks the environment. Without the secrets the deploy job is skipped, not
 failed.
 
 Infrastructure is code: `infra/` is a **Pulumi program in TypeScript** (Luciano tried Go and chose
