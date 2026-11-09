@@ -31,7 +31,12 @@ Desde esta carpeta (`infra/`), siempre: así Pulumi usa este `Pulumi.yaml` y no 
 1. Cuentas y credenciales:
    - **Cloudflare**: Account ID y un API token con *Account → Cloudflare Pages → Edit*.
    - **Supabase**: creá la organización (plan Free), copiá su ID desde *Organization settings*, y
-     generá un token en *Account preferences → Access Tokens*. No crees el proyecto a mano.
+     generá un token en *Account preferences → Access Tokens*. No crees el proyecto a mano: el plan
+     Free permite 2 proyectos activos por usuario (sumando todas tus orgs), y uno creado por fuera de
+     Pulumi no queda en el estado.
+     El token tiene que tener alcance **Organization** (con *Project* solo opera sobre proyectos que
+     ya existen, y crear uno da 403) y estos permisos: *Organization Projects* Read-Write,
+     *Projects* Read, *Auth Config* Read-Write, *Project Settings* Read-Write y *Organizations* Read.
 2. Dependencias. `pulumi install` baja los plugins, genera el SDK de Supabase en `sdks/`
    (ignorado por git) y corre `npm install`:
 
@@ -56,10 +61,24 @@ Desde esta carpeta (`infra/`), siempre: así Pulumi usa este `Pulumi.yaml` y no 
    Los tokens van en la config del stack, no en variables de entorno, para que este proyecto no
    use por accidente credenciales de otro.
 
+   En Git Bash, el prompt oculto de `--secret` puede guardar un valor vacío. Si pasa, copiá el valor
+   y cargalo desde el portapapeles (no queda en el historial), y verificá el largo:
+
+   ```sh
+   pulumi config set --secret supabase:accessToken "$(cat /dev/clipboard)"
+   pulumi config get supabase:accessToken | wc -c   # mayor a 1
+   ```
+
+   Para comprobar que el token de Supabase ve la org (tiene que listarla, no devolver `[]`):
+
+   ```sh
+   curl -s -H "Authorization: Bearer $(pulumi config get supabase:accessToken)" https://api.supabase.com/v1/organizations
+   ```
+
 4. Revisá el plan y aplicalo:
 
    ```sh
-   pulumi preview    # tienen que aparecer 3 recursos para crear (+)
+   pulumi preview    # tienen que aparecer 4 para crear (+): stack, Pages, Project y Settings
    pulumi up
    pulumi stack output   # siteUrl y supabaseUrl
    ```
