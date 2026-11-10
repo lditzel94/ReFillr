@@ -27,9 +27,11 @@ create table public.household_members (
 );
 create index household_members_household_id_idx on public.household_members (household_id);
 
--- The name other members see. Created with the account (see private.create_profile).
+-- What other members of the household see: name and email. Created with the account
+-- (see private.create_profile).
 create table public.profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
+  email text not null default '',
   display_name text not null default '' check (length(display_name) <= 60)
 );
 
@@ -122,8 +124,12 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.profiles (user_id, display_name)
-  values (new.id, coalesce(btrim(new.raw_user_meta_data ->> 'display_name'), ''));
+  insert into public.profiles (user_id, email, display_name)
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    coalesce(btrim(new.raw_user_meta_data ->> 'display_name'), '')
+  );
   return new;
 end;
 $$;

@@ -4,7 +4,7 @@
 -- switching to the `authenticated` role with that person's id in the JWT claims, the same way
 -- PostgREST does for a real request.
 begin;
-select plan(43);
+select plan(44);
 
 -- ---------------------------------------------------------------------------------------------
 -- Setup, as the database owner (RLS doesn't apply)
@@ -33,9 +33,9 @@ from public.categories
 where household_id = 'bbbbbbbb-0000-0000-0000-000000000000' and name = 'Despensa';
 
 select results_eq(
-  $$ select display_name from public.profiles order by user_id $$,
-  $$ values ('Ana'), (''), ('Caro') $$,
-  'every account gets a profile, named from the invite metadata when present'
+  $$ select email, display_name from public.profiles order by user_id $$,
+  $$ values ('ana@example.com', 'Ana'), ('beto@example.com', ''), ('caro@example.com', 'Caro') $$,
+  'every account gets a profile with its email, named from the invite metadata when present'
 );
 
 select results_eq(
@@ -163,6 +163,9 @@ select results_eq(
        returning 1)
      select count(*)::int from changed $$,
   $$ values (0) $$, 'a person cannot rename someone else');
+select throws_ok(
+  $$ update public.profiles set email = 'otro@example.com' where user_id = '00000000-0000-0000-0000-00000000000b' $$,
+  '42501', null, 'a person cannot change the email others see');
 select throws_ok(
   $$ insert into public.household_members (user_id, household_id)
      values ('00000000-0000-0000-0000-00000000000c', 'aaaaaaaa-0000-0000-0000-000000000000') $$,
