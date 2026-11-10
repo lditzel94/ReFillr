@@ -8,7 +8,7 @@
   position: sticky;
   top: 0;
   z-index: 6;
-  padding: calc(16px + var(--safe-top)) var(--gutter) 12px;
+  padding: calc(28px + var(--safe-top)) var(--gutter) 12px;
   /* Opaque on purpose: on iOS 26 a translucent bar at the top edge makes the system draw its own
      darker gradient under the status bar. */
   background: var(--color-bg);

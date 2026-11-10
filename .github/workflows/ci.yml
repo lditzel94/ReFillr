@@ -29,7 +29,7 @@ jobs:
       - run: npm ci
       - run: npx ng test --watch=false
       - run: npx ng build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: site
           path: dist/refillr/browser
@@ -141,7 +141,7 @@ jobs:
           cache: npm
       - run: npm ci
         if: steps.creds.outputs.ok == 'true'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.creds.outputs.ok == 'true'
         with:
           name: site
