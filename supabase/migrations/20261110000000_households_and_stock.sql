@@ -68,6 +68,8 @@ create table public.items (
   -- Set by private.stamp_item, never by the client.
   updated_by uuid references auth.users (id) on delete set null,
   updated_at timestamptz not null default now(),
+  -- Keeps the list in the order items were added.
+  created_at timestamptz not null default now(),
   -- A category with items can't be deleted. NO ACTION (not RESTRICT) is checked at the end of the
   -- statement, so deleting a whole household can still cascade to both tables.
   foreign key (category_id, household_id)
