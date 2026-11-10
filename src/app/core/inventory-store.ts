@@ -7,7 +7,7 @@ import { Tables } from './database.types';
 import { HouseholdService } from './household';
 import { LocalStore } from './local-store';
 import { Category, Item, ItemDraft } from './models';
-import { applyOps, byCreation, ItemOp, opItemId } from './outbox';
+import { applyCategoryOps, applyOps, byCreation, isCategoryOp, ItemOp, opTargetId } from './outbox';
 import { clampQty, groupByCategory, needToBuy, toBuyList } from './stock';
 import { SUPABASE } from './supabase';
 import { ToastService } from './toast';
@@ -20,7 +20,7 @@ type SendResult =
   /** The item no longer exists (another member deleted it). */
   | { kind: 'gone' }
   /** The backend refused it for good (for example, the person left the household). */
-  | { kind: 'rejected' }
+  | { kind: 'rejected'; reason?: string }
   /** No connection, or a passing failure: try again later. */
   | { kind: 'retry' };
 
@@ -50,14 +50,15 @@ export class InventoryStore {
   private readonly householdId = computed(() => this.households.current()?.id ?? null);
   private readonly server = signal<Item[]>([]);
   private readonly outbox = signal<ItemOp[]>([]);
-  private readonly _categories = signal<Category[]>([]);
+  private readonly serverCategories = signal<Category[]>([]);
 
-  readonly categories = this._categories.asReadonly();
+  /** Base categories first, then the household's own in creation order. */
+  readonly categories = computed(() => applyCategoryOps(this.serverCategories(), this.outbox()));
   readonly items = computed(() =>
     applyOps(this.server(), this.outbox(), this.householdId() ?? '', this.auth.user()?.id ?? null),
   );
   readonly toBuy = computed(() => toBuyList(this.items()));
-  readonly groups = computed(() => groupByCategory(this.items(), this._categories()));
+  readonly groups = computed(() => groupByCategory(this.items(), this.categories()));
   readonly unitsShort = computed(() => this.toBuy().reduce((sum, it) => sum + needToBuy(it), 0));
   readonly isEmpty = computed(() => this.items().length === 0);
   /** Changes made on this device that haven't reached the backend yet. */
@@ -148,13 +149,52 @@ export class InventoryStore {
     };
   }
 
+  /**
+   * Creates one of the household's own categories and returns its id, or null when the name is
+   * taken (ignoring case and spaces, like the database).
+   */
+  createCategory(name: string): string | null {
+    const clean = name.trim();
+    if (!clean || this.categoryNamed(clean)) return null;
+    const id = crypto.randomUUID();
+    this.enqueue({ kind: 'createCategory', ...this.stamp(), categoryId: id, name: clean });
+    return id;
+  }
+
+  /** Renames one of the household's own categories. False when the name is taken or empty. */
+  renameCategory(id: string, name: string): boolean {
+    const clean = name.trim();
+    const category = this.categories().find((c) => c.id === id);
+    const taken = this.categoryNamed(clean);
+    if (!clean || !category || category.isBase || (taken && taken.id !== id)) return false;
+    if (clean !== category.name) {
+      this.enqueue({ kind: 'renameCategory', ...this.stamp(), categoryId: id, name: clean });
+    }
+    return true;
+  }
+
+  /** Deletes one of the household's own categories, only while it has no items. */
+  deleteCategory(id: string): boolean {
+    const category = this.categories().find((c) => c.id === id);
+    if (!category || category.isBase || this.items().some((it) => it.categoryId === id)) {
+      return false;
+    }
+    this.enqueue({ kind: 'deleteCategory', ...this.stamp(), categoryId: id });
+    return true;
+  }
+
+  private categoryNamed(name: string): Category | undefined {
+    const key = name.trim().toLocaleLowerCase();
+    return this.categories().find((c) => c.name.trim().toLocaleLowerCase() === key);
+  }
+
   // -------------------------------------------------------------------------------------------
   // Loading and listening
   // -------------------------------------------------------------------------------------------
 
   private open(householdId: string): void {
     this.server.set(this.cache.read<Item[]>(itemsKey(householdId), []));
-    this._categories.set(this.cache.read<Category[]>(categoriesKey(householdId), []));
+    this.serverCategories.set(this.cache.read<Category[]>(categoriesKey(householdId), []));
     this.outbox.set(this.cache.read<ItemOp[]>(outboxKey(householdId), []));
 
     if (this.channel) void this.supabase.removeChannel(this.channel);
@@ -215,7 +255,7 @@ export class InventoryStore {
       .order('position');
     if (error || householdId !== this.householdId()) return;
     const categories = data.map((c) => ({ id: c.id, name: c.name, isBase: c.is_base }));
-    this._categories.set(categories);
+    this.serverCategories.set(categories);
     this.cache.write(categoriesKey(householdId), categories);
   }
 
@@ -237,7 +277,7 @@ export class InventoryStore {
     clearTimeout(this.retryTimer);
     this.server.set([]);
     this.outbox.set([]);
-    this._categories.set([]);
+    this.serverCategories.set([]);
     for (const key of [itemsKey, categoriesKey, outboxKey]) this.cache.remove(key(householdId));
   }
 
@@ -256,12 +296,15 @@ export class InventoryStore {
     this.flushing = true;
     clearTimeout(this.retryTimer);
     let refetch = false;
+    let refetchCategories = false;
     try {
       while (this.outbox().length) {
         const op = this.outbox()[0];
-        const itemId = opItemId(op);
-        const name = this.byId(itemId)?.name;
-        this.inFlight = itemId;
+        const itemId = opTargetId(op);
+        const name = isCategoryOp(op)
+          ? this.categories().find((c) => c.id === itemId)?.name
+          : this.byId(itemId)?.name;
+        this.inFlight = isCategoryOp(op) ? null : itemId;
         this.echo = null;
         const result = await this.send(op);
         if (result.kind === 'retry') {
@@ -285,15 +328,19 @@ export class InventoryStore {
           if (name) this.toast.show(`${name} ya no está: lo borró otro miembro.`);
         }
         if (result.kind === 'rejected') {
-          this.toast.show(`No se pudo guardar el cambio${name ? ` en ${name}` : ''}.`);
+          this.toast.show(
+            result.reason ?? `No se pudo guardar el cambio${name ? ` en ${name}` : ''}.`,
+          );
           refetch = true;
         }
+        if (isCategoryOp(op)) refetchCategories = true;
       }
     } finally {
       this.inFlight = null;
       this.echo = null;
       this.flushing = false;
     }
+    if (refetchCategories) await this.fetchCategories();
     if (refetch || this.fetchAfterFlush) {
       this.fetchAfterFlush = false;
       await this.fetchItems();
@@ -355,6 +402,40 @@ export class InventoryStore {
         const { error } = await this.supabase.from('items').delete().eq('id', op.itemId);
         return error ? failure(error) : { kind: 'done' };
       }
+      case 'createCategory': {
+        const { error } = await this.supabase.from('categories').insert({
+          id: op.categoryId,
+          household_id: this.householdId()!,
+          name: op.name,
+        });
+        if (!error) return { kind: 'done' };
+        // Same id: an earlier attempt went through. Same name: someone else got there first.
+        if (error.code === '23505' && error.message.includes('pkey')) return { kind: 'done' };
+        if (error.code === '23505') {
+          return { kind: 'rejected', reason: `Ya hay una categoría llamada ${op.name}.` };
+        }
+        return failure(error);
+      }
+      case 'renameCategory': {
+        const { error } = await this.supabase
+          .from('categories')
+          .update({ name: op.name })
+          .eq('id', op.categoryId);
+        if (error?.code === '23505') {
+          return { kind: 'rejected', reason: `Ya hay una categoría llamada ${op.name}.` };
+        }
+        return error ? failure(error) : { kind: 'done' };
+      }
+      case 'deleteCategory': {
+        const { error } = await this.supabase.from('categories').delete().eq('id', op.categoryId);
+        if (error?.code === '23503') {
+          return {
+            kind: 'rejected',
+            reason: 'No se pudo borrar la categoría: alguien le agregó ítems.',
+          };
+        }
+        return error ? failure(error) : { kind: 'done' };
+      }
     }
   }
 
@@ -384,11 +465,11 @@ export class InventoryStore {
         !present.has(it.id) &&
         !created.has(it.id) &&
         it.id !== this.inFlight &&
-        this.outbox().some((op) => opItemId(op) === it.id && op.kind !== 'delete'),
+        this.outbox().some((op) => opTargetId(op) === it.id && op.kind !== 'delete'),
     );
     if (!orphans.length) return;
     const gone = new Set(orphans.map((it) => it.id));
-    this.setOutbox(this.outbox().filter((op) => !gone.has(opItemId(op))));
+    this.setOutbox(this.outbox().filter((op) => !gone.has(opTargetId(op))));
     const names = orphans.map((it) => it.name).join(', ');
     this.toast.show(
       orphans.length === 1

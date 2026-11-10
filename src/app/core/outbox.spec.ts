@@ -1,5 +1,5 @@
 import { Item } from './models';
-import { applyOps, ItemOp } from './outbox';
+import { applyCategoryOps, applyOps, ItemOp } from './outbox';
 
 const milk: Item = {
   id: 'milk',
@@ -90,5 +90,34 @@ describe('applyOps', () => {
 
   it('ignores changes to an item someone else already deleted', () => {
     expect(apply([{ kind: 'adjust', opId: '1', at, itemId: 'gone', delta: 1 }])).toEqual([milk]);
+  });
+});
+
+describe('applyCategoryOps', () => {
+  const base = [
+    { id: 'pantry', name: 'Despensa', isBase: true },
+    { id: 'pets', name: 'Mascotas', isBase: false },
+  ];
+
+  it('creates, renames and deletes the household’s own categories in order', () => {
+    const categories = applyCategoryOps(base, [
+      { kind: 'createCategory', opId: '1', at, categoryId: 'garden', name: 'Jardín' },
+      { kind: 'renameCategory', opId: '2', at, categoryId: 'pets', name: 'Mascota' },
+      { kind: 'deleteCategory', opId: '3', at, categoryId: 'garden' },
+    ]);
+    expect(categories.map((c) => c.name)).toEqual(['Despensa', 'Mascota']);
+  });
+
+  it('never changes a base category', () => {
+    const categories = applyCategoryOps(base, [
+      { kind: 'renameCategory', opId: '1', at, categoryId: 'pantry', name: 'Comida' },
+      { kind: 'deleteCategory', opId: '2', at, categoryId: 'pantry' },
+    ]);
+    expect(categories[0]).toEqual(base[0]);
+  });
+
+  it('leaves the items alone', () => {
+    const op: ItemOp = { kind: 'createCategory', opId: '1', at, categoryId: 'x', name: 'X' };
+    expect(apply([op])).toEqual([milk]);
   });
 });

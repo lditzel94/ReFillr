@@ -1,4 +1,4 @@
-import { Item, ItemDraft } from './models';
+import { Category, Item, ItemDraft } from './models';
 import { clampQty } from './stock';
 
 /**
@@ -14,10 +14,21 @@ export type ItemOp =
   | { kind: 'update'; opId: string; at: string; itemId: string; changes: ItemDraft }
   | { kind: 'adjust'; opId: string; at: string; itemId: string; delta: number }
   | { kind: 'restock'; opId: string; at: string; itemId: string }
-  | { kind: 'delete'; opId: string; at: string; itemId: string };
+  | { kind: 'delete'; opId: string; at: string; itemId: string }
+  | { kind: 'createCategory'; opId: string; at: string; categoryId: string; name: string }
+  | { kind: 'renameCategory'; opId: string; at: string; categoryId: string; name: string }
+  | { kind: 'deleteCategory'; opId: string; at: string; categoryId: string };
 
-/** The item an operation is about. */
-export function opItemId(op: ItemOp): string {
+/** Category changes share the queue with item changes, so an item can use a category created offline. */
+export type CategoryOp = Extract<ItemOp, { categoryId: string }>;
+
+export function isCategoryOp(op: ItemOp): op is CategoryOp {
+  return 'categoryId' in op;
+}
+
+/** The item or category an operation is about. */
+export function opTargetId(op: ItemOp): string {
+  if (isCategoryOp(op)) return op.categoryId;
   return op.kind === 'create' ? op.item.id : op.itemId;
 }
 
@@ -33,7 +44,8 @@ export function applyOps(
 ): Item[] {
   let items = server.slice();
   for (const op of ops) {
-    const id = opItemId(op);
+    if (isCategoryOp(op)) continue;
+    const id = opTargetId(op);
     const touched = { pending: true, updatedBy: me, updatedAt: op.at };
     switch (op.kind) {
       case 'create':
@@ -62,6 +74,30 @@ export function applyOps(
     }
   }
   return items;
+}
+
+/** The categories to show: the server's, with the pending category changes applied in order. */
+export function applyCategoryOps(server: readonly Category[], ops: readonly ItemOp[]): Category[] {
+  let categories = server.slice();
+  for (const op of ops) {
+    if (!isCategoryOp(op)) continue;
+    switch (op.kind) {
+      case 'createCategory':
+        if (!categories.some((c) => c.id === op.categoryId)) {
+          categories.push({ id: op.categoryId, name: op.name, isBase: false });
+        }
+        break;
+      case 'renameCategory':
+        categories = categories.map((c) =>
+          c.id === op.categoryId && !c.isBase ? { ...c, name: op.name } : c,
+        );
+        break;
+      case 'deleteCategory':
+        categories = categories.filter((c) => c.id !== op.categoryId || c.isBase);
+        break;
+    }
+  }
+  return categories;
 }
 
 /** Keeps the list in the order items were added. */

@@ -132,6 +132,10 @@ function toAuthError(error: unknown): AuthError {
   if (isAuthRetryableFetchError(error) || (typeof navigator !== 'undefined' && !navigator.onLine)) {
     return new AuthError('No hay conexión. Probá de nuevo cuando vuelva la señal.');
   }
+  if (isAuthApiError(error) && error.code === 'over_email_send_rate_limit') {
+    // Supabase's built-in mailer sends only a few emails per hour for the whole project.
+    return new AuthError('Ya se mandaron muchos mails. Esperá una hora y probá de nuevo.');
+  }
   if (isRateLimit(error)) {
     return new AuthError('Demasiados intentos. Esperá un minuto y probá de nuevo.');
   }
