@@ -9,9 +9,9 @@
   top: 0;
   z-index: 6;
   padding: calc(16px + var(--safe-top)) var(--gutter) 12px;
-  background: rgba(22, 24, 38, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  /* Opaque on purpose: on iOS 26 a translucent bar at the top edge makes the system draw its own
+     darker gradient under the status bar. */
+  background: var(--color-bg);
 }
 .bar {
   display: flex;
