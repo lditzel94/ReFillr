@@ -104,6 +104,7 @@ export type Database = {
       items: {
         Row: {
           category_id: string;
+          created_at: string;
           current_qty: number;
           household_id: string;
           id: string;
@@ -116,6 +117,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           category_id: string;
+          created_at?: string;
           current_qty: number;
           household_id: string;
           id?: string;
@@ -127,6 +129,7 @@ export type Database = {
         };
         Update: {
           category_id?: string;
+          created_at?: string;
           current_qty?: number;
           household_id?: string;
           id?: string;
@@ -181,6 +184,7 @@ export type Database = {
         Args: { p_change_id: string; p_delta: number; p_item_id: string };
         Returns: {
           category_id: string;
+          created_at: string;
           current_qty: number;
           household_id: string;
           id: string;
@@ -203,6 +207,7 @@ export type Database = {
         Args: { p_change_id: string; p_item_id: string };
         Returns: {
           category_id: string;
+          created_at: string;
           current_qty: number;
           household_id: string;
           id: string;

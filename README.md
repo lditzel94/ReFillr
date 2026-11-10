@@ -71,13 +71,12 @@ src/app/
 - Las pantallas siguen el prototipo de diseño (tema oscuro "Nocturne", mobile-first).
 - Las cuentas y los hogares son reales (Supabase). Nadie se registra solo: el administrador invita
   desde el panel de Supabase y arma los hogares con los scripts de [`supabase/`](supabase/README.md).
-- **Los ítems todavía viven en `localStorage`** de cada dispositivo; pasan a Supabase en el próximo
-  paso. Todo el acceso pasa por `core/`, así los componentes no tocan Supabase.
-- El indicador "Sincronizado / Sin conexión" refleja la conectividad real; los cambios hechos sin
-  conexión quedan marcados como *pendiente* hasta volver a estar online.
+- El stock es compartido y se actualiza en tiempo real entre los miembros del hogar.
+- Sin conexión se sigue editando: los cambios quedan marcados como *pendiente* y se mandan solos
+  al volver la señal. Dos personas que restan a la vez el mismo ítem suman sus cambios.
+- El indicador "Sincronizado / Sin conexión" refleja la conectividad real.
 
 ## Próximos pasos
 
-1. Supabase (decisión tomada): esquema `households` / `household_members` / `items` con RLS, auth real y realtime
-   para que varias cuentas compartan el mismo hogar.
+1. Categorías propias de cada hogar, creadas desde la app.
 2. Modo "en el súper" para ir tachando la lista.

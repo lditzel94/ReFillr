@@ -45,9 +45,6 @@
       <p>
         Todavía no hay ítems en el hogar. Agregá lo que se usa en casa y cuánto se consume por mes.
       </p>
-      <button type="button" class="btn btn-ghost" (click)="loadDemo()">
-        Cargar un stock de ejemplo
-      </button>
     </div>
   } @else {
     @if (toBuy().length) {
@@ -68,10 +65,10 @@
 
     <hr class="rule divider" />
 
-    @for (g of groups(); track g.category) {
-      <section class="group" [attr.aria-label]="categoryLabels[g.category]">
+    @for (g of groups(); track g.category.id) {
+      <section class="group" [attr.aria-label]="g.category.name">
         <div class="section-head">
-          <h2 class="eyebrow muted">{{ categoryLabels[g.category] }}</h2>
+          <h2 class="eyebrow muted">{{ g.category.name }}</h2>
           <span class="count dim">{{ g.count }}</span>
         </div>
         @for (v of g.items; track v.item.id) {

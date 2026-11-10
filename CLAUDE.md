@@ -119,18 +119,22 @@ needs a pgTAP test in `supabase/tests/`.
 
 ## Current state
 
-Accounts and households are real (Supabase Auth, `AuthService`, `HouseholdService`, with Realtime on
-membership). Items still persist to `localStorage` per household through `core/local-store.ts`
-until `InventoryStore` moves to Supabase (issue #6). Keep persistence behind the `core/` services
-so components never talk to Supabase directly. `src/environments/supabase.ts` holds the project URL
-and publishable key; `npm run start:local` swaps in the local Supabase, and `npm run db:types`
-regenerates `core/database.types.ts` after a migration.
+Everything runs on Supabase: accounts (`AuthService`), the household and its members
+(`HouseholdService`) and the stock (`InventoryStore`), with Realtime so members see each other's
+changes. Every stock change goes through an outbox (`core/outbox.ts`): it shows at once, is kept
+on the device and is sent in order when there is a connection; quantity changes are deltas with a
+`change_id`, so retries apply once and concurrent changes add up. `core/local-store.ts` is only
+the device's cache of the last server state plus the outbox. Keep Supabase calls inside `core/`
+services. `src/environments/supabase.ts` holds the project URL and publishable key;
+`npm run start:local` swaps in the local Supabase, and `npm run db:types` regenerates
+`core/database.types.ts` after a migration.
 
 ## Roadmap
 
 1. ~~Scaffold the PWA and build the screens from the design~~ (done).
-2. Create the Supabase schema with RLS, replace the local auth/household/item persistence, and add
-   realtime subscriptions so household members see each other's changes.
+2. ~~Create the Supabase schema with RLS, replace the local auth/household/item persistence, and add
+   realtime subscriptions so household members see each other's changes~~ (done; custom
+   categories from the UI still pending, issue #7).
 3. ~~Host it over HTTPS~~ (Cloudflare Pages, deployed from GitHub Actions).
 4. "Shopping mode" list to tick off in-store, and category-level totals (from the design notes).
 

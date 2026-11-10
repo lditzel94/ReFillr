@@ -23,11 +23,19 @@ describe('toBuyList', () => {
 
 describe('groupByCategory', () => {
   it('follows the category order and drops empty groups', () => {
-    const groups = groupByCategory([
-      { id: 1, category: 'cleaning' as const },
-      { id: 2, category: 'pantry' as const },
-    ]);
-    expect(groups.map((g) => g.category)).toEqual(['pantry', 'cleaning']);
+    const categories = [
+      { id: 'pantry', name: 'Despensa', isBase: true },
+      { id: 'bathroom', name: 'Baño', isBase: true },
+      { id: 'cleaning', name: 'Limpieza', isBase: true },
+    ];
+    const groups = groupByCategory(
+      [
+        { id: 1, categoryId: 'cleaning' },
+        { id: 2, categoryId: 'pantry' },
+      ],
+      categories,
+    );
+    expect(groups.map((g) => g.category.name)).toEqual(['Despensa', 'Limpieza']);
   });
 });
 
