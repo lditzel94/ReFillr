@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { inHouseholdGuard, needsHouseholdGuard, signedOutGuard } from './core/guards';
+import { inHouseholdGuard, noHouseholdGuard, signedOutGuard } from './core/guards';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'stock' },
@@ -8,22 +8,28 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/auth-layout').then((m) => m.AuthLayout),
     children: [
       {
-        path: 'ingresar',
+        path: 'sign-in',
         title: 'Ingresar · ReFillr',
         canActivate: [signedOutGuard],
         loadComponent: () => import('./auth/sign-in').then((m) => m.SignIn),
       },
       {
-        path: 'registro',
-        title: 'Crear cuenta · ReFillr',
+        path: 'forgot-password',
+        title: 'Olvidé mi contraseña · ReFillr',
         canActivate: [signedOutGuard],
-        loadComponent: () => import('./auth/sign-up').then((m) => m.SignUp),
+        loadComponent: () => import('./auth/forgot-password').then((m) => m.ForgotPassword),
       },
       {
-        path: 'hogar',
+        // Opened from the invite and recovery emails, signed in or not.
+        path: 'set-password',
+        title: 'Elegí tu contraseña · ReFillr',
+        loadComponent: () => import('./auth/set-password').then((m) => m.SetPassword),
+      },
+      {
+        path: 'no-household',
         title: 'Tu hogar · ReFillr',
-        canActivate: [needsHouseholdGuard],
-        loadComponent: () => import('./auth/household-setup').then((m) => m.HouseholdSetup),
+        canActivate: [noHouseholdGuard],
+        loadComponent: () => import('./auth/no-household').then((m) => m.NoHousehold),
       },
     ],
   },

@@ -22,11 +22,17 @@ export interface User {
 export interface Household {
   id: string;
   name: string;
-  inviteCode: string;
-  memberIds: string[];
-  createdAt: string;
   /** Start of the current shopping cycle (ISO date). Only a visual marker. */
   cycleStart: string;
+}
+
+/** A person in the household, as the other members see them. */
+export interface Member {
+  id: string;
+  email: string;
+  displayName: string;
+  /** The admin can't be removed from a household by other members. */
+  isAdmin: boolean;
 }
 
 export interface Item {

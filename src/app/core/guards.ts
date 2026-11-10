@@ -4,26 +4,31 @@ import { AuthService } from './auth';
 import { HouseholdService } from './household';
 
 /**
- * Route guards read signals synchronously: no observables, no subscriptions.
- * Each one sends the user to the single screen that matches their state.
+ * Each guard sends the person to the one screen that matches their state. "Signed in" is a
+ * signal read synchronously (the session is restored before the first navigation, see
+ * app.config.ts); the household needs one fetch, so the household guards wait for it.
  */
 
-/** Sign-in / sign-up: only when signed out. */
+/** Sign in and forgot password: only when signed out. */
 export const signedOutGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   return auth.signedIn() ? inject(Router).createUrlTree(['/']) : true;
 };
 
-/** Household setup: signed in, without a household yet. */
-export const needsHouseholdGuard: CanActivateFn = () => {
+/** "No household yet": signed in, without a household. */
+export const noHouseholdGuard: CanActivateFn = async () => {
   const router = inject(Router);
-  if (!inject(AuthService).signedIn()) return router.createUrlTree(['/ingresar']);
-  return inject(HouseholdService).current() ? router.createUrlTree(['/stock']) : true;
+  if (!inject(AuthService).signedIn()) return router.createUrlTree(['/sign-in']);
+  const households = inject(HouseholdService);
+  await households.ensureLoaded();
+  return households.current() ? router.createUrlTree(['/stock']) : true;
 };
 
 /** Stock list: signed in and in a household. */
-export const inHouseholdGuard: CanActivateFn = () => {
+export const inHouseholdGuard: CanActivateFn = async () => {
   const router = inject(Router);
-  if (!inject(AuthService).signedIn()) return router.createUrlTree(['/ingresar']);
-  return inject(HouseholdService).current() ? true : router.createUrlTree(['/hogar']);
+  if (!inject(AuthService).signedIn()) return router.createUrlTree(['/sign-in']);
+  const households = inject(HouseholdService);
+  await households.ensureLoaded();
+  return households.current() ? true : router.createUrlTree(['/no-household']);
 };

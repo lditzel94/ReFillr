@@ -28,19 +28,3 @@ export function clampQty(qty: number): number {
   if (!Number.isFinite(qty)) return 0;
   return Math.min(MAX_QTY, Math.max(0, Math.round(qty)));
 }
-
-/** Six characters, no 0/O/1/I so codes survive being read aloud. */
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-export function generateInviteCode(random: () => number = Math.random): string {
-  let code = '';
-  for (let i = 0; i < 6; i++) code += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
-  return code;
-}
-
-export function normalizeInviteCode(raw: string): string {
-  return raw
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-    .slice(0, 6);
-}
