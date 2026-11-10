@@ -6,7 +6,7 @@ import { Connectivity } from '../core/connectivity';
 import { formatMonth, initials, plural, timeAgo } from '../core/format';
 import { HouseholdError, HouseholdService } from '../core/household';
 import { InventoryStore } from '../core/inventory-store';
-import { CATEGORY_LABELS, Item, ItemDraft } from '../core/models';
+import { Item, ItemDraft } from '../core/models';
 import { needToBuy } from '../core/stock';
 import { ToastService } from '../core/toast';
 import { Logo } from '../shared/logo';
@@ -44,7 +44,6 @@ export class StockPage {
     });
   }
 
-  protected readonly categoryLabels = CATEGORY_LABELS;
   protected readonly household = this.households.current;
   protected readonly isEmpty = this.inventory.isEmpty;
 
@@ -160,11 +159,6 @@ export class StockPage {
     }
     const household = this.household();
     if (household) this.toast.show(`Arrancó el ciclo de ${formatMonth(household.cycleStart)}.`);
-  }
-
-  protected loadDemo(): void {
-    this.inventory.loadDemo();
-    this.toast.show('Cargamos un stock de ejemplo. Editalo o borralo cuando quieras.');
   }
 
   protected async signedOut(): Promise<void> {

@@ -1,11 +1,9 @@
 import { Injectable } from '@angular/core';
 
 /**
- * Thin JSON wrapper over localStorage.
- *
- * This is the temporary persistence layer: everything lives on this device
- * until Supabase is wired in. Keeping every read/write behind this class
- * means the swap touches services, not components.
+ * Thin JSON wrapper over localStorage: the device's copy of what the backend last said (household,
+ * items, categories) and the changes still waiting to be sent. It lets the app open and keep
+ * working without signal; Supabase stays the source of truth.
  */
 @Injectable({ providedIn: 'root' })
 export class LocalStore {

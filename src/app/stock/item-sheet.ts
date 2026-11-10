@@ -1,13 +1,13 @@
-import { Component, computed, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { form, FormField, FormRoot, min, required } from '@angular/forms/signals';
-import { CATEGORIES, CATEGORY_LABELS, Category, Item, ItemDraft } from '../core/models';
+import { InventoryStore } from '../core/inventory-store';
+import { Item, ItemDraft } from '../core/models';
 import { needToBuy } from '../core/stock';
 import { BottomSheet } from '../shared/bottom-sheet';
 import { FieldError } from '../shared/field-error';
 
-const NEW_ITEM: ItemDraft = {
+const NEW_ITEM: Omit<ItemDraft, 'categoryId'> = {
   name: '',
-  category: 'pantry',
   unit: 'paquetes',
   monthlyUsage: 1,
   currentQty: 0,
@@ -79,16 +79,16 @@ const NEW_ITEM: ItemDraft = {
         <fieldset class="field">
           <legend>Categoría</legend>
           <div class="chips">
-            @for (c of categories; track c) {
+            @for (c of categories(); track c.id) {
               <button
                 type="button"
                 class="tag chip"
-                [class.tag-outline]="draft().category === c"
-                [class.tag-neutral]="draft().category !== c"
-                [attr.aria-pressed]="draft().category === c"
-                (click)="pick(c)"
+                [class.tag-outline]="draft().categoryId === c.id"
+                [class.tag-neutral]="draft().categoryId !== c.id"
+                [attr.aria-pressed]="draft().categoryId === c.id"
+                (click)="pick(c.id)"
               >
-                {{ labels[c] }}
+                {{ c.name }}
               </button>
             }
           </div>
@@ -195,20 +195,20 @@ export class ItemSheet {
   readonly deleted = output<void>();
   readonly closed = output<void>();
 
-  protected readonly categories = CATEGORIES;
-  protected readonly labels = CATEGORY_LABELS;
+  /** The household's categories, from the database (base ones first). */
+  protected readonly categories = inject(InventoryStore).categories;
 
   protected readonly draft = linkedSignal<ItemDraft>(() => {
     const it = this.item();
     return it
       ? {
           name: it.name,
-          category: it.category,
+          categoryId: it.categoryId,
           unit: it.unit,
           monthlyUsage: it.monthlyUsage,
           currentQty: it.currentQty,
         }
-      : { ...NEW_ITEM };
+      : { ...NEW_ITEM, categoryId: this.categories()[0]?.id ?? '' };
   });
 
   protected readonly itemForm = form(
@@ -231,7 +231,7 @@ export class ItemSheet {
   protected readonly title = computed(() => (this.item() ? 'Editar ítem' : 'Nuevo ítem'));
   protected readonly need = computed(() => needToBuy(this.draft()));
 
-  protected pick(category: Category): void {
-    this.draft.update((d) => ({ ...d, category }));
+  protected pick(categoryId: string): void {
+    this.draft.update((d) => ({ ...d, categoryId }));
   }
 }

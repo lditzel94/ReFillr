@@ -2,6 +2,8 @@ import { Component, computed, inject, output, signal } from '@angular/core';
 import { AuthService } from '../core/auth';
 import { initials } from '../core/format';
 import { HouseholdError, HouseholdService } from '../core/household';
+import { InventoryStore } from '../core/inventory-store';
+import { plural } from '../core/format';
 import { ToastService } from '../core/toast';
 import { BottomSheet } from '../shared/bottom-sheet';
 
@@ -51,7 +53,22 @@ import { BottomSheet } from '../shared/bottom-sheet';
         <p class="hint muted">Para sumar a alguien, pedíselo al administrador.</p>
       </div>
 
-      @if (confirming() === 'leave') {
+      @if (confirming() === 'sign-out') {
+        <div class="confirm">
+          <p>
+            Hay {{ pendingText() }} sin enviar porque no hay conexión. Si cerrás sesión ahora, se
+            pierden.
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary btn-lg" (click)="confirming.set(null)">
+              Esperar
+            </button>
+            <button type="button" class="btn btn-primary btn-lg" (click)="signOut(true)">
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      } @else if (confirming() === 'leave') {
         <div class="confirm">
           <p>
             @if (members().length === 1) {
@@ -167,7 +184,12 @@ export class HouseholdSheet {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
-  protected readonly confirming = signal<'leave' | string | null>(null);
+  private readonly inventory = inject(InventoryStore);
+
+  protected readonly confirming = signal<'leave' | 'sign-out' | string | null>(null);
+  protected readonly pendingText = computed(() =>
+    plural(this.inventory.pendingCount(), 'cambio', 'cambios'),
+  );
   protected readonly busy = signal(false);
 
   protected readonly members = computed(() => {
@@ -196,7 +218,11 @@ export class HouseholdSheet {
     });
   }
 
-  protected async signOut(): Promise<void> {
+  protected async signOut(confirmed = false): Promise<void> {
+    if (!confirmed && this.inventory.pendingCount() > 0) {
+      this.confirming.set('sign-out');
+      return;
+    }
     await this.auth.signOut();
     this.signedOut.emit();
   }

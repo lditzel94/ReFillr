@@ -1,4 +1,4 @@
-import { Category, CATEGORIES, Item } from './models';
+import { Category, Item } from './models';
 
 /** Core rule of the app: how many units bring the item back to its monthly level. */
 export function needToBuy(item: Pick<Item, 'monthlyUsage' | 'currentQty'>): number {
@@ -12,14 +12,17 @@ export function toBuyList<T extends Pick<Item, 'monthlyUsage' | 'currentQty'>>(
   return items.filter((it) => needToBuy(it) > 0).sort((a, b) => needToBuy(b) - needToBuy(a));
 }
 
-/** Groups items by category in the fixed category order, dropping empty groups. */
-export function groupByCategory<T extends Pick<Item, 'category'>>(
+/** Groups items by category, in the given category order, dropping empty groups. */
+export function groupByCategory<T extends Pick<Item, 'categoryId'>>(
   items: readonly T[],
+  categories: readonly Category[],
 ): { category: Category; items: T[] }[] {
-  return CATEGORIES.map((category) => ({
-    category,
-    items: items.filter((it) => it.category === category),
-  })).filter((g) => g.items.length > 0);
+  return categories
+    .map((category) => ({
+      category,
+      items: items.filter((it) => it.categoryId === category.id),
+    }))
+    .filter((g) => g.items.length > 0);
 }
 
 export const MAX_QTY = 999;

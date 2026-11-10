@@ -1,17 +1,4 @@
-/**
- * Domain types. The shapes mirror the tables we plan to create in Supabase
- * (households, household_members, items) so the persistence layer can be
- * swapped without touching the UI.
- */
-
-export const CATEGORIES = ['pantry', 'bathroom', 'cleaning'] as const;
-export type Category = (typeof CATEGORIES)[number];
-
-export const CATEGORY_LABELS: Record<Category, string> = {
-  pantry: 'Despensa',
-  bathroom: 'Baño',
-  cleaning: 'Limpieza',
-};
+/** Domain types. Terms follow GLOSSARY.md; the shapes mirror the Supabase tables. */
 
 export interface User {
   id: string;
@@ -35,24 +22,34 @@ export interface Member {
   isAdmin: boolean;
 }
 
+/** A household's category: the three base ones, then the household's own in creation order. */
+export interface Category {
+  id: string;
+  name: string;
+  /** Despensa, Baño and Limpieza: every household has them and they can't be changed. */
+  isBase: boolean;
+}
+
 export interface Item {
   id: string;
   householdId: string;
+  categoryId: string;
   name: string;
-  category: Category;
   unit: string;
   monthlyUsage: number;
   currentQty: number;
-  updatedBy: string;
+  /** Who changed it last; null once that account is deleted. */
+  updatedBy: string | null;
   updatedAt: string;
-  /** True while a local change has not been acknowledged by the backend. */
+  createdAt: string;
+  /** True while a change made on this device has not reached the backend. */
   pending: boolean;
 }
 
 /** The editable part of an item, as used by the add/edit sheet. */
 export interface ItemDraft {
   name: string;
-  category: Category;
+  categoryId: string;
   unit: string;
   monthlyUsage: number;
   currentQty: number;

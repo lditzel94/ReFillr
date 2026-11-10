@@ -187,7 +187,10 @@ export class HouseholdService {
       .channel(`household:${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'household_members' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'households' }, refresh)
-      .subscribe();
+      // Also on (re)subscribing: covers whatever changed before the channel was listening.
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') refresh();
+      });
   }
 
   private reset(): void {
