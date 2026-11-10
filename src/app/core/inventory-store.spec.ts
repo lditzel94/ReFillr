@@ -1,16 +1,23 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth';
 import { HouseholdService } from './household';
 import { InventoryStore } from './inventory-store';
+import { Household, User } from './models';
 
 describe('InventoryStore', () => {
   let store: InventoryStore;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({});
-    await TestBed.inject(AuthService).signUp('Sam', 'sam@example.com', 'password1');
-    TestBed.inject(HouseholdService).create();
+    const user: User = { id: 'user-1', email: 'sam@example.com', displayName: 'Sam' };
+    const household: Household = { id: 'home-1', name: 'Hogar', cycleStart: '2026-11-01' };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useValue: { user: signal(user) } },
+        { provide: HouseholdService, useValue: { current: signal(household) } },
+      ],
+    });
     store = TestBed.inject(InventoryStore);
   });
 
@@ -57,6 +64,7 @@ describe('InventoryStore', () => {
     store.add(milk);
     TestBed.tick();
     const householdId = TestBed.inject(HouseholdService).current()!.id;
-    expect(store.countFor(householdId)).toBe(1);
+    const saved = JSON.parse(localStorage.getItem(`refillr.items.${householdId}`) ?? '[]');
+    expect(saved.length).toBe(1);
   });
 });

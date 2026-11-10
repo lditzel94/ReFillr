@@ -1,10 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth';
 import { Clock } from '../core/clock';
 import { Connectivity } from '../core/connectivity';
 import { formatMonth, initials, plural, timeAgo } from '../core/format';
-import { HouseholdService } from '../core/household';
+import { HouseholdError, HouseholdService } from '../core/household';
 import { InventoryStore } from '../core/inventory-store';
 import { CATEGORY_LABELS, Item, ItemDraft } from '../core/models';
 import { needToBuy } from '../core/stock';
@@ -35,6 +35,15 @@ export class StockPage {
   private readonly router = inject(Router);
   protected readonly connectivity = inject(Connectivity);
 
+  constructor() {
+    // Removed from the household (here or by someone else, via Realtime), or left it.
+    effect(() => {
+      if (this.households.loaded() && !this.households.current()) {
+        void this.router.navigateByUrl('/no-household', { replaceUrl: true });
+      }
+    });
+  }
+
   protected readonly categoryLabels = CATEGORY_LABELS;
   protected readonly household = this.households.current;
   protected readonly isEmpty = this.inventory.isEmpty;
@@ -48,13 +57,11 @@ export class StockPage {
   });
 
   protected readonly avatars = computed(() =>
-    this.households
-      .members()
-      .map((u) => ({
-        id: u.id,
-        initial: initials(u.displayName),
-        me: u.id === this.auth.user()?.id,
-      })),
+    this.households.members().map((u) => ({
+      id: u.id,
+      initial: initials(u.displayName || u.email),
+      me: u.id === this.auth.user()?.id,
+    })),
   );
 
   protected readonly toBuy = computed(() => this.inventory.toBuy().map((it) => this.toView(it)));
@@ -144,8 +151,13 @@ export class StockPage {
     this.toast.show(`Eliminado: ${editing.name}.`, restore);
   }
 
-  protected newCycle(): void {
-    this.households.startNewCycle();
+  protected async newCycle(): Promise<void> {
+    try {
+      await this.households.startNewCycle();
+    } catch (e) {
+      this.toast.show(e instanceof HouseholdError ? e.message : 'Algo falló. Probá de nuevo.');
+      return;
+    }
     const household = this.household();
     if (household) this.toast.show(`Arrancó el ciclo de ${formatMonth(household.cycleStart)}.`);
   }
@@ -157,15 +169,13 @@ export class StockPage {
 
   protected async signedOut(): Promise<void> {
     this.closeSheet();
-    await this.router.navigateByUrl('/ingresar');
+    await this.router.navigateByUrl('/sign-in', { replaceUrl: true });
   }
 
   private toView(item: Item): ItemView {
     const me = this.auth.user()?.id;
     const who =
-      item.updatedBy === me
-        ? 'Vos'
-        : (this.auth.userById(item.updatedBy)?.displayName ?? 'Alguien');
+      item.updatedBy === me ? 'Vos' : (this.households.memberName(item.updatedBy) ?? 'Alguien');
     return {
       item,
       need: needToBuy(item),

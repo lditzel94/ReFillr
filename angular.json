@@ -48,6 +48,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "local": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/supabase.ts",
+                  "with": "src/environments/supabase.local.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -60,6 +71,9 @@
             },
             "development": {
               "buildTarget": "refillr:build:development"
+            },
+            "local": {
+              "buildTarget": "refillr:build:local"
             }
           },
           "defaultConfiguration": "development"

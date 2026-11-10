@@ -58,10 +58,6 @@ export class InventoryStore {
     });
   }
 
-  countFor(householdId: string): number {
-    return this.read(householdId).length;
-  }
-
   byId(id: string): Item | undefined {
     return this.items().find((it) => it.id === id);
   }

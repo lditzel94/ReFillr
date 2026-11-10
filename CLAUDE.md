@@ -39,6 +39,7 @@ npx ng build                 # production build -> dist/refillr/browser (service
 npm run preview              # production build served by wrangler, like Cloudflare Pages does
 npm run db:start             # local Supabase (Docker) with the migrations applied
 npm run db:test              # pgTAP access tests in supabase/tests against it
+npm run start:local          # dev server against the local Supabase instead of production
 ```
 
 ## Deploy
@@ -70,8 +71,8 @@ not Pulumi.
 
 | Path | Role |
 |---|---|
-| `src/app/core/` | Models, pure stock rules, signal-based services (auth, household, inventory, toast, clock, connectivity), route guards |
-| `src/app/auth/` | Sign in, sign up, household setup (join by invite code or create) |
+| `src/app/core/` | Models, pure stock rules, the Supabase client and generated `database.types.ts`, signal-based services (auth, household, inventory, toast, clock, connectivity), route guards |
+| `src/app/auth/` | Sign in, forgot password, set password (invite and recovery links), no-household screen |
 | `src/app/stock/` | Main screen: to-buy cards, per-category rows with steppers, add/edit and household bottom sheets |
 | `src/app/shared/` | Bottom sheet, toast host, logo, field error |
 | `src/styles.css` | Design tokens and shared classes (`.btn`, `.input`, `.tag`, `.card`, `.rule`) |
@@ -116,12 +117,14 @@ Nobody signs up alone (signup is disabled): the admin invites accounts from the 
 and manages households with `supabase/scripts/*.sql` (docs/adr/0001). Every schema or RLS change
 needs a pgTAP test in `supabase/tests/`.
 
-## Current state: placeholder persistence
+## Current state
 
-Today everything persists to `localStorage` through `core/local-store.ts`, passwords are not checked,
-and joining by invite code only finds households created on the same device. Keep persistence
-behind the `core/` services (`AuthService`, `HouseholdService`, `InventoryStore`) so the Supabase
-swap does not touch components.
+Accounts and households are real (Supabase Auth, `AuthService`, `HouseholdService`, with Realtime on
+membership). Items still persist to `localStorage` per household through `core/local-store.ts`
+until `InventoryStore` moves to Supabase (issue #6). Keep persistence behind the `core/` services
+so components never talk to Supabase directly. `src/environments/supabase.ts` holds the project URL
+and publishable key; `npm run start:local` swaps in the local Supabase, and `npm run db:types`
+regenerates `core/database.types.ts` after a migration.
 
 ## Roadmap
 

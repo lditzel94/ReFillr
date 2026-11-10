@@ -1,11 +1,4 @@
-import {
-  clampQty,
-  generateInviteCode,
-  groupByCategory,
-  needToBuy,
-  normalizeInviteCode,
-  toBuyList,
-} from './stock';
+import { clampQty, groupByCategory, needToBuy, toBuyList } from './stock';
 
 describe('needToBuy', () => {
   it('returns what is missing to reach the monthly level', () => {
@@ -44,16 +37,5 @@ describe('clampQty', () => {
     expect(clampQty(2.6)).toBe(3);
     expect(clampQty(Number.NaN)).toBe(0);
     expect(clampQty(5000)).toBe(999);
-  });
-});
-
-describe('invite codes', () => {
-  it('generates six unambiguous characters', () => {
-    const code = generateInviteCode();
-    expect(code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
-  });
-
-  it('normalizes user input', () => {
-    expect(normalizeInviteCode(' 4kq-2zp9 ')).toBe('4KQ2ZP');
   });
 });

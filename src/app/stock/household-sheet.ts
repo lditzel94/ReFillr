@@ -1,7 +1,7 @@
-import { Component, computed, inject, output } from '@angular/core';
+import { Component, computed, inject, output, signal } from '@angular/core';
 import { AuthService } from '../core/auth';
 import { initials } from '../core/format';
-import { HouseholdService } from '../core/household';
+import { HouseholdError, HouseholdService } from '../core/household';
 import { ToastService } from '../core/toast';
 import { BottomSheet } from '../shared/bottom-sheet';
 
@@ -17,30 +17,73 @@ import { BottomSheet } from '../shared/bottom-sheet';
       </div>
 
       <div class="field">
-        <span class="label">Código de invitación</span>
-        <div class="code-row">
-          <span class="code">{{ household?.inviteCode }}</span>
-          <button type="button" class="btn btn-secondary" (click)="share()">Compartir</button>
-        </div>
-        <p class="hint muted">Quien se una con este código ve y edita el mismo stock.</p>
-      </div>
-
-      <div class="field">
         <span class="label">Miembros</span>
         <ul class="members">
           @for (m of members(); track m.id) {
             <li>
               <span class="avatar">{{ m.initial }}</span>
-              <span class="truncate">{{ m.name }}</span>
-              <span class="muted email truncate">{{ m.email }}</span>
+              <span class="who">
+                <span class="truncate">{{ m.name }}</span>
+                <span class="muted email truncate">{{ m.email }}</span>
+              </span>
+              @if (m.removable) {
+                @if (confirming() === m.id) {
+                  <button type="button" class="btn btn-secondary" (click)="confirming.set(null)">
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    [disabled]="busy()"
+                    (click)="remove(m.id, m.name)"
+                  >
+                    Sacar
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn-ghost" (click)="confirming.set(m.id)">
+                    Sacar
+                  </button>
+                }
+              }
             </li>
           }
         </ul>
+        <p class="hint muted">Para sumar a alguien, pedíselo al administrador.</p>
       </div>
 
-      <button type="button" class="btn btn-secondary btn-lg btn-block" (click)="signOut()">
-        Cerrar sesión
-      </button>
+      @if (confirming() === 'leave') {
+        <div class="confirm">
+          <p>
+            @if (members().length === 1) {
+              Sos el último miembro: al salir se borran el hogar y todo su stock.
+            } @else {
+              Vas a dejar de ver este stock. Para volver, el administrador te tiene que sumar.
+            }
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-secondary btn-lg" (click)="confirming.set(null)">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary btn-lg"
+              [disabled]="busy()"
+              (click)="leave()"
+            >
+              Salir del hogar
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="actions">
+          <button type="button" class="btn btn-secondary btn-lg" (click)="confirming.set('leave')">
+            Salir del hogar
+          </button>
+          <button type="button" class="btn btn-secondary btn-lg" (click)="signOut()">
+            Cerrar sesión
+          </button>
+        </div>
+      }
     </app-bottom-sheet>
   `,
   styles: `
@@ -60,19 +103,8 @@ import { BottomSheet } from '../shared/bottom-sheet';
       margin-bottom: 5px;
       color: color-mix(in srgb, var(--color-text) 70%, transparent);
     }
-    .code-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .code {
-      flex: 1;
-      font-size: 22px;
-      letter-spacing: 0.18em;
-      color: var(--color-accent-soft);
-    }
     .hint {
-      margin: 6px 0 0;
+      margin: 8px 0 0;
       font-size: 12px;
     }
     .members {
@@ -81,7 +113,7 @@ import { BottomSheet } from '../shared/bottom-sheet';
       padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
     li {
       display: flex;
@@ -90,9 +122,26 @@ import { BottomSheet } from '../shared/bottom-sheet';
       min-width: 0;
       font-size: 14px;
     }
+    .who {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
     .email {
       font-size: 12px;
-      margin-left: auto;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .actions .btn {
+      flex: 1;
+    }
+    .confirm p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      line-height: 1.5;
     }
     .avatar {
       width: 26px;
@@ -111,40 +160,56 @@ import { BottomSheet } from '../shared/bottom-sheet';
 export class HouseholdSheet {
   readonly closed = output<void>();
   readonly signedOut = output<void>();
+  /** Left the household: the page moves to the "no household" screen. */
+  readonly left = output<void>();
 
   protected readonly households = inject(HouseholdService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
-  protected readonly members = computed(() =>
-    this.households
-      .members()
-      .map((u) => ({
-        id: u.id,
-        name: u.displayName,
-        email: u.email,
-        initial: initials(u.displayName),
-      })),
-  );
+  protected readonly confirming = signal<'leave' | string | null>(null);
+  protected readonly busy = signal(false);
 
-  protected async share(): Promise<void> {
-    const household = this.households.current();
-    if (!household) return;
-    const text = `Unite a ${household.name} en ReFillr con el código ${household.inviteCode}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-        return;
-      }
-      await navigator.clipboard.writeText(household.inviteCode);
-      this.toast.show('Código copiado.');
-    } catch {
-      // Share sheet dismissed: nothing to do.
-    }
+  protected readonly members = computed(() => {
+    const me = this.auth.user()?.id;
+    return this.households.members().map((m) => ({
+      id: m.id,
+      name: m.id === me ? `${m.displayName || m.email} (vos)` : m.displayName || m.email,
+      email: m.email,
+      initial: initials(m.displayName || m.email),
+      // Nobody removes themselves (that's "Salir") or the admin.
+      removable: m.id !== me && !m.isAdmin,
+    }));
+  });
+
+  protected async remove(id: string, name: string): Promise<void> {
+    await this.run(async () => {
+      await this.households.remove(id);
+      this.toast.show(`Sacaste a ${name} del hogar.`);
+    });
   }
 
-  protected signOut(): void {
-    this.auth.signOut();
+  protected async leave(): Promise<void> {
+    await this.run(async () => {
+      await this.households.leave();
+      this.left.emit();
+    });
+  }
+
+  protected async signOut(): Promise<void> {
+    await this.auth.signOut();
     this.signedOut.emit();
+  }
+
+  private async run(action: () => Promise<void>): Promise<void> {
+    this.busy.set(true);
+    try {
+      await action();
+    } catch (e) {
+      this.toast.show(e instanceof HouseholdError ? e.message : 'Algo falló. Probá de nuevo.');
+    } finally {
+      this.busy.set(false);
+      this.confirming.set(null);
+    }
   }
 }

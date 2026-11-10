@@ -26,6 +26,7 @@ npx ng build                   # build de producción en dist/refillr/browser
 npm run preview                # build de producción servido con wrangler, igual que en Cloudflare
 npm run db:start               # Supabase local en Docker, con las migraciones aplicadas
 npm run db:test                # tests de acceso (pgTAP) contra esa base
+npm run start:local            # la app contra el Supabase local (npm start usa el de producción)
 ```
 
 La base, las reglas de acceso y los scripts de administración están en
@@ -60,7 +61,7 @@ Sin los secrets, los jobs de migraciones y de deploy se saltean.
 ```
 src/app/
   core/      dominio y estado: modelos, reglas de stock, servicios con signals, guards
-  auth/      ingresar, crear cuenta, crear/unirse a un hogar
+  auth/      ingresar, olvidé mi contraseña, elegir contraseña, sin hogar
   stock/     pantalla principal, tarjetas "para comprar", filas con stepper, hojas de edición
   shared/    piezas reutilizables (bottom sheet, toast, logo, errores de formulario)
 ```
@@ -68,9 +69,10 @@ src/app/
 ## Estado actual
 
 - Las pantallas siguen el prototipo de diseño (tema oscuro "Nocturne", mobile-first).
-- **Los datos viven en `localStorage`**: cuentas, hogares e ítems quedan en el dispositivo y la
-  contraseña todavía no se valida. Todo el acceso pasa por `core/` para poder cambiarlo por
-  Supabase sin tocar los componentes.
+- Las cuentas y los hogares son reales (Supabase). Nadie se registra solo: el administrador invita
+  desde el panel de Supabase y arma los hogares con los scripts de [`supabase/`](supabase/README.md).
+- **Los ítems todavía viven en `localStorage`** de cada dispositivo; pasan a Supabase en el próximo
+  paso. Todo el acceso pasa por `core/`, así los componentes no tocan Supabase.
 - El indicador "Sincronizado / Sin conexión" refleja la conectividad real; los cambios hechos sin
   conexión quedan marcados como *pendiente* hasta volver a estar online.
 

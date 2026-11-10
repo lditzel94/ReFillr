@@ -54,10 +54,11 @@ import { FieldError } from '../shared/field-error';
         Ingresar
       </button>
 
-      <div class="row">
-        <a class="btn btn-ghost" routerLink="/registro">Crear una cuenta</a>
-        <span class="muted">Olvidé mi contraseña</span>
-      </div>
+      <a class="btn btn-ghost link" routerLink="/forgot-password">Olvidé mi contraseña</a>
+
+      <p class="muted note">
+        Las cuentas las crea el administrador. Si todavía no tenés una, pedile que te invite.
+      </p>
 
       <p class="footnote">
         La sesión queda abierta en este dispositivo. Más adelante se podrá sumar un desbloqueo con
@@ -66,15 +67,14 @@ import { FieldError } from '../shared/field-error';
     </form>
   `,
   styles: `
-    .row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-    }
-    .row .btn {
+    .link {
+      align-self: flex-start;
       font-size: 13px;
       text-decoration: none;
+    }
+    .note {
+      margin: 0;
+      font-size: 13px;
     }
   `,
 })

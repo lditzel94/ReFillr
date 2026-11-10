@@ -107,6 +107,6 @@
     }
   }
   @case ('household') {
-    <app-household-sheet (closed)="closeSheet()" (signedOut)="signedOut()" />
+    <app-household-sheet (closed)="closeSheet()" (signedOut)="signedOut()" (left)="closeSheet()" />
   }
 }
