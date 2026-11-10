@@ -5,7 +5,7 @@
 | `migrations/` | El esquema: tablas, reglas de acceso (RLS), triggers y funciones (RPC). El CI las aplica a producción al mergear a `main`. |
 | `tests/` | Tests de pgTAP: quién ve y edita qué, la protección del administrador y los cambios de cantidad. |
 | `scripts/` | Scripts para el administrador, para pegar en el editor SQL del panel de Supabase. |
-| `templates/` | Los mails de invitación y de recuperar contraseña. Pulumi los manda a producción. |
+| `templates/` | Los mails de invitación y de recuperar contraseña. Solo los usa el Supabase local: en producción el plan gratis no permite plantillas sin SMTP propio. |
 
 ## Probar en local
 

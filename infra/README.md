@@ -6,7 +6,7 @@ Este programa declara lo que tiene que existir para que ReFillr funcione:
 |---|---|
 | `cloudflare.PagesProject` `refillr` | El proyecto de Pages (Direct Upload) donde el CI publica cada build |
 | `supabase.Project` `refillr` | La base y la auth, en `sa-east-1` (San Pablo). Protegido: Pulumi no lo borra |
-| `supabase.Settings` `refillr` | Auth: URL del sitio y redirects, registro público apagado, contraseña de 8+ caracteres y los mails de invitación y recuperación (HTML en [`supabase/templates/`](../supabase/templates)) |
+| `supabase.Settings` `refillr` | Auth: URL del sitio y redirects, registro público apagado, contraseña de 8+ caracteres. Los mails son los de Supabase por defecto: el plan gratis no deja cambiarlos sin un SMTP propio |
 
 Lo que **no** está acá: el esquema de la base (va en migraciones de Supabase) y los deploys de la
 app (los hace `.github/workflows/ci.yml` con wrangler).

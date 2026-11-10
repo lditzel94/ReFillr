@@ -49,9 +49,29 @@ export class AuthService {
 
   /** Reads the stored session before the first navigation, so guards can decide synchronously. */
   async init(): Promise<void> {
+    await this.adoptDefaultLink();
     const { data } = await this.supabase.auth.getSession();
     this.session.set(data.session);
     this.supabase.auth.onAuthStateChange((_event, session) => this.session.set(session));
+  }
+
+  /**
+   * Supabase's own email templates (used if ours aren't applied) link to `/auth/v1/verify`, which
+   * lands on the site with the session in the URL hash: `#access_token=…&refresh_token=…&type=…`.
+   * Take that session and continue on /set-password as if our own link had been used. Runs before
+   * the first navigation, so the router only ever sees the clean URL.
+   */
+  private async adoptDefaultLink(): Promise<void> {
+    if (typeof location === 'undefined' || !location.hash.includes('type=')) return;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const type = params.get('type');
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (type !== 'invite' && type !== 'recovery') return;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    if (!access_token || !refresh_token) return;
+    const { error } = await this.supabase.auth.setSession({ access_token, refresh_token });
+    if (!error) history.replaceState(history.state, '', `/set-password?type=${type}`);
   }
 
   async signIn(email: string, password: string): Promise<void> {

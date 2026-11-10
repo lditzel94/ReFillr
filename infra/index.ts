@@ -1,8 +1,6 @@
 // Infrastructure for ReFillr: the Cloudflare Pages project that hosts the PWA and the Supabase
 // project behind it. App deploys stay in CI (wrangler pages deploy) and the database schema
 // lives in Supabase migrations; this program only declares what has to exist and how it is set up.
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import * as pulumi from '@pulumi/pulumi';
 import * as cloudflare from '@pulumi/cloudflare';
 import * as supabase from '@pulumi/supabase';
@@ -33,11 +31,11 @@ const db = new supabase.Project(
 // localhost is allowed for `npm start`.
 const siteUrl = pulumi.interpolate`https://${pages.subdomain}`;
 
-// The email templates are shared with the local Supabase (supabase/config.toml). Their links go
-// straight to ReFillr's /set-password screen, so nobody ever lands on a Supabase page.
-const template = (name: string) =>
-  readFileSync(join(__dirname, '..', 'supabase', 'templates', `${name}.html`), 'utf8');
-
+// No custom email templates here: on the free plan Supabase only allows them with a custom SMTP
+// provider. Its default emails link to /auth/v1/verify, which lands on the site with the session in
+// the URL hash; AuthService picks that up and continues on /set-password. The Spanish templates in
+// supabase/templates are used by the local Supabase (config.toml) and can come back here once an
+// SMTP provider is configured.
 new supabase.Settings('refillr', {
   projectRef: db.id,
   auth: siteUrl.apply((url) =>
@@ -47,10 +45,6 @@ new supabase.Settings('refillr', {
       // Accounts are created by the admin (Authentication > Invite user); nobody signs up alone.
       disable_signup: true,
       password_min_length: 8,
-      mailer_subjects_invite: 'Te sumaron a ReFillr',
-      mailer_templates_invite_content: template('invite'),
-      mailer_subjects_recovery: 'Elegí una contraseña nueva',
-      mailer_templates_recovery_content: template('recovery'),
     }),
   ),
 });
