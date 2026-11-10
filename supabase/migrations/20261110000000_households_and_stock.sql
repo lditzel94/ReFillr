@@ -183,6 +183,8 @@ create trigger protect_base_categories
   for each row execute function private.protect_base_categories();
 
 -- Who changed an item and when come from the server, never from the client.
+-- clock_timestamp(), not now(): the trigger runs once the row lock is held, so of two concurrent
+-- changes the one applied last gets the later time, and clients can keep the newest version.
 create function private.stamp_item()
 returns trigger
 language plpgsql
@@ -190,7 +192,7 @@ set search_path = ''
 as $$
 begin
   new.updated_by := (select auth.uid());
-  new.updated_at := now();
+  new.updated_at := clock_timestamp();
   return new;
 end;
 $$;
