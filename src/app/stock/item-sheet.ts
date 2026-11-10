@@ -1,4 +1,13 @@
-import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { form, FormField, FormRoot, min, required } from '@angular/forms/signals';
 import { InventoryStore } from '../core/inventory-store';
 import { Item, ItemDraft } from '../core/models';
@@ -91,7 +100,35 @@ const NEW_ITEM: Omit<ItemDraft, 'categoryId'> = {
                 {{ c.name }}
               </button>
             }
+            @if (!addingCategory()) {
+              <button type="button" class="tag tag-neutral chip" (click)="addingCategory.set(true)">
+                + Nueva
+              </button>
+            }
           </div>
+          @if (addingCategory()) {
+            <div class="new-category">
+              <input
+                class="input"
+                aria-label="Nombre de la categoría nueva"
+                placeholder="Mascotas"
+                autocomplete="off"
+                maxlength="40"
+                [value]="newCategory()"
+                (input)="newCategory.set($any($event.target).value)"
+                (keydown.enter)="$event.preventDefault(); createCategory()"
+              />
+              <button type="button" class="btn btn-secondary" (click)="cancelCategory()">
+                Cancelar
+              </button>
+              <button type="button" class="btn btn-primary" (click)="createCategory()">
+                Crear
+              </button>
+            </div>
+            @if (categoryError(); as error) {
+              <p class="field-error">{{ error }}</p>
+            }
+          }
         </fieldset>
 
         <div class="need">
@@ -153,6 +190,15 @@ const NEW_ITEM: Omit<ItemDraft, 'categoryId'> = {
       padding: 0;
       color: color-mix(in srgb, var(--color-text) 70%, transparent);
     }
+    .new-category {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .new-category .input {
+      flex: 1;
+      min-width: 0;
+    }
     .chips {
       display: flex;
       gap: 8px;
@@ -195,8 +241,13 @@ export class ItemSheet {
   readonly deleted = output<void>();
   readonly closed = output<void>();
 
+  private readonly inventory = inject(InventoryStore);
   /** The household's categories, from the database (base ones first). */
-  protected readonly categories = inject(InventoryStore).categories;
+  protected readonly categories = this.inventory.categories;
+
+  protected readonly addingCategory = signal(false);
+  protected readonly newCategory = signal('');
+  protected readonly categoryError = signal<string | null>(null);
 
   protected readonly draft = linkedSignal<ItemDraft>(() => {
     const it = this.item();
@@ -208,7 +259,8 @@ export class ItemSheet {
           monthlyUsage: it.monthlyUsage,
           currentQty: it.currentQty,
         }
-      : { ...NEW_ITEM, categoryId: this.categories()[0]?.id ?? '' };
+      : // untracked: a category created from this sheet must not reset the form.
+        { ...NEW_ITEM, categoryId: untracked(this.categories)[0]?.id ?? '' };
   });
 
   protected readonly itemForm = form(
@@ -233,5 +285,27 @@ export class ItemSheet {
 
   protected pick(categoryId: string): void {
     this.draft.update((d) => ({ ...d, categoryId }));
+  }
+
+  /** Creates the category and leaves it picked for this item. */
+  protected createCategory(): void {
+    const name = this.newCategory().trim();
+    if (!name) {
+      this.categoryError.set('Ponele un nombre.');
+      return;
+    }
+    const id = this.inventory.createCategory(name);
+    if (!id) {
+      this.categoryError.set(`Ya hay una categoría llamada ${name}.`);
+      return;
+    }
+    this.pick(id);
+    this.cancelCategory();
+  }
+
+  protected cancelCategory(): void {
+    this.addingCategory.set(false);
+    this.newCategory.set('');
+    this.categoryError.set(null);
   }
 }

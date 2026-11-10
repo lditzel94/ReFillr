@@ -6,10 +6,11 @@ import { InventoryStore } from '../core/inventory-store';
 import { plural } from '../core/format';
 import { ToastService } from '../core/toast';
 import { BottomSheet } from '../shared/bottom-sheet';
+import { CategoryList } from './category-list';
 
 @Component({
   selector: 'app-household-sheet',
-  imports: [BottomSheet],
+  imports: [BottomSheet, CategoryList],
   template: `
     <app-bottom-sheet label="Hogar" (closed)="closed.emit()">
       @let household = households.current();
@@ -51,6 +52,11 @@ import { BottomSheet } from '../shared/bottom-sheet';
           }
         </ul>
         <p class="hint muted">Para sumar a alguien, pedíselo al administrador.</p>
+      </div>
+
+      <div class="field">
+        <span class="label">Categorías</span>
+        <app-category-list />
       </div>
 
       @if (confirming() === 'sign-out') {
