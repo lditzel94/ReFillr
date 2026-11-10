@@ -7,5 +7,5 @@
  */
 export const supabaseConfig = {
   url: 'https://bdzlldteahgdfovbhcgg.supabase.co',
-  publishableKey: 'sb_publishable_REPLACE_WITH_PULUMI_OUTPUT',
+  publishableKey: 'sb_publishable_7SAQnT8qU3HRSRZEeZrWPQ_94i0ytkg',
 };
