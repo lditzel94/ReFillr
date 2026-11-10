@@ -401,4 +401,4 @@ grant execute on function public.adjust_qty(uuid, integer, uuid), public.restock
 -- ---------------------------------------------------------------------------------------------
 
 alter publication supabase_realtime
-  add table public.items, public.categories, public.household_members;
+  add table public.households, public.household_members, public.items, public.categories;
