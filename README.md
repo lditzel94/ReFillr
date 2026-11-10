@@ -24,18 +24,22 @@ npm start                      # http://localhost:4200
 npx ng test --watch=false      # tests unitarios (Vitest)
 npx ng build                   # build de producción en dist/refillr/browser
 npm run preview                # build de producción servido con wrangler, igual que en Cloudflare
+npm run db:start               # Supabase local en Docker, con las migraciones aplicadas
+npm run db:test                # tests de acceso (pgTAP) contra esa base
 ```
+
+La base, las reglas de acceso y los scripts de administración están en
+[`supabase/`](supabase/README.md).
 
 El service worker sólo se activa en el build de producción. Para probar la instalación como app,
 serví `dist/refillr/browser` por HTTPS (o `localhost`).
 
 ## Deploy (Cloudflare Pages)
 
-El workflow `.github/workflows/ci.yml` corre los tests y el build en cada push y PR, y después
-publica en Cloudflare Pages con `wrangler pages deploy`:
-
-- push a `main` → producción (`https://refillr.pages.dev`)
-- PR → preview en una URL propia, que el workflow comenta en el PR
+El workflow `.github/workflows/ci.yml` corre los tests, el build y los tests de la base en cada push
+y PR. En `main`, además, aplica las migraciones nuevas a Supabase (`supabase db push`) y después
+publica en Cloudflare Pages con `wrangler pages deploy` (`https://refillr.pages.dev`). Los PRs no se
+publican ([ADR 0002](docs/adr/0002-no-preview-deploys.md)).
 
 El proyecto de Pages (y el de Supabase) los crea el programa de Pulumi en [`infra/`](infra/README.md),
 escrito en TypeScript. El CI sólo publica builds en un proyecto que ya existe.
@@ -43,11 +47,13 @@ escrito en TypeScript. El CI sólo publica builds en un proyecto que ya existe.
 Configuración, una sola vez:
 
 1. Seguí [`infra/README.md`](infra/README.md) hasta el `pulumi up`.
-2. En GitHub: *Settings → Environments*, creá dos environments, `production` (con *Deployment
-   branches* limitado a `main`) y `preview`, y en cada uno agregá los secrets `CLOUDFLARE_API_TOKEN`
-   (con *Account → Cloudflare Pages → Edit*) y `CLOUDFLARE_ACCOUNT_ID`.
+2. En GitHub: *Settings → Environments → production* (con *Deployment branches* limitado a `main`),
+   agregá los secrets:
+   - `CLOUDFLARE_API_TOKEN` (con *Account → Cloudflare Pages → Edit*) y `CLOUDFLARE_ACCOUNT_ID`.
+   - `SUPABASE_ACCESS_TOKEN` (*Account preferences → Access Tokens* en Supabase) y
+     `SUPABASE_DB_PASSWORD` (la misma que `pulumi config get dbPassword`).
 
-Sin los secrets, el job de deploy se saltea.
+Sin los secrets, los jobs de migraciones y de deploy se saltean.
 
 ## Estructura
 

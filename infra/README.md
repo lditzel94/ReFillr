@@ -6,7 +6,7 @@ Este programa declara lo que tiene que existir para que ReFillr funcione:
 |---|---|
 | `cloudflare.PagesProject` `refillr` | El proyecto de Pages (Direct Upload) donde el CI publica cada build |
 | `supabase.Project` `refillr` | La base y la auth, en `sa-east-1` (San Pablo). Protegido: Pulumi no lo borra |
-| `supabase.Settings` `refillr` | URL del sitio y redirects permitidos para los mails de auth |
+| `supabase.Settings` `refillr` | Auth: URL del sitio y redirects, registro público apagado, contraseña de 8+ caracteres y los mails de invitación y recuperación (HTML en [`supabase/templates/`](../supabase/templates)) |
 
 Lo que **no** está acá: el esquema de la base (va en migraciones de Supabase) y los deploys de la
 app (los hace `.github/workflows/ci.yml` con wrangler).
@@ -80,11 +80,11 @@ Desde esta carpeta (`infra/`), siempre: así Pulumi usa este `Pulumi.yaml` y no 
    ```sh
    pulumi preview    # tienen que aparecer 4 para crear (+): stack, Pages, Project y Settings
    pulumi up
-   pulumi stack output   # siteUrl y supabaseUrl
+   pulumi stack output   # siteUrl, supabaseUrl y supabasePublishableKey
    ```
 
-5. Recién ahora cargá `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` en los environments
-   `production` y `preview` de GitHub (ver el README de la raíz): el deploy del CI necesita que el proyecto de Pages ya exista.
+5. Recién ahora cargá `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` en el environment
+   `production` de GitHub (ver el README de la raíz): el deploy del CI necesita que el proyecto de Pages ya exista.
 
 ## Si el proyecto de Pages ya existe
 

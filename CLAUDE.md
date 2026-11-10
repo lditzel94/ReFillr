@@ -8,7 +8,9 @@ Household stock tracker. Each item records how much is used per month and how mu
 app computes what to buy to get back to the monthly level:
 `needToBuy = max(0, monthlyUsage - currentQty)` (see `src/app/core/stock.ts`).
 
-The UI is in Spanish (rioplatense voseo: "Agregá", "Vos"). The user writes in Spanish.
+The UI is in Spanish (rioplatense voseo: "Agregá", "Vos"). The user writes in Spanish. Code, file
+names, script names and URL routes are in English; only what the person sees (UI text, emails) is
+Spanish. Domain names in code follow `GLOSSARY.md`.
 
 ## Project intent
 
@@ -35,15 +37,18 @@ npm start                    # dev server, http://localhost:4200
 npx ng test --watch=false    # Vitest unit tests
 npx ng build                 # production build -> dist/refillr/browser (service worker included)
 npm run preview              # production build served by wrangler, like Cloudflare Pages does
+npm run db:start             # local Supabase (Docker) with the migrations applied
+npm run db:test              # pgTAP access tests in supabase/tests against it
 ```
 
 ## Deploy
 
 Hosted on **Cloudflare Pages** (Direct Upload, not Pages' Git integration). `.github/workflows/ci.yml`
-tests and builds every push and PR, then runs `wrangler pages deploy`: `main` goes to production, a
-PR deploys as a preview of its branch and gets the URL as a PR comment. Secrets
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` are environment secrets, in both GitHub environments
-`production` (main only) and `preview` (PRs); the deploy job picks the environment. Without the secrets the deploy job is skipped, not
+tests and builds every push and PR and runs the database tests on a throwaway Supabase in Docker. On
+`main` it then applies new migrations (`supabase db push --remote`) and runs `wrangler pages deploy`
+to production. PRs are not deployed (docs/adr/0002). Secrets `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` live in the GitHub
+environment `production` (main only). Without them the migrate and deploy jobs are skipped, not
 failed.
 
 Infrastructure is code: `infra/` is a **Pulumi program in TypeScript** (Luciano tried Go and chose
@@ -73,6 +78,8 @@ not Pulumi.
 | `ngsw-config.json`, `public/manifest.webmanifest` | PWA |
 | `public/_headers`, `.github/workflows/ci.yml` | Cloudflare Pages caching rules, CI and deploy |
 | `infra/` | Pulumi (TypeScript): Pages project, Supabase project and auth settings |
+| `supabase/` | Migrations (schema, RLS, RPC), pgTAP tests, admin SQL scripts, auth email templates |
+| `GLOSSARY.md`, `docs/adr/` | Domain vocabulary and decision records |
 
 ## Design source
 
@@ -98,15 +105,16 @@ stack changed.
 Multi-user household model: each person has their own Supabase Auth account, and a household groups
 them.
 
-```sql
-households (id, name, invite_code, cycle_start)
-household_members (household_id, user_id)
-items (id, household_id, name, category, unit, monthly_usage, current_qty, updated_by, updated_at)
-```
+The schema is in `supabase/migrations/`: `households`, `household_members` (one household per
+person), `profiles`, `app_admins`, `categories` (three base ones per household plus its own) and
+`items`. Items belong to a **household**, never to an individual user. Row Level Security is the
+access-control mechanism: a person reads and writes only rows of the household they are a member
+of. Quantity changes (`adjust_qty`, `restock`) and membership changes (`remove_member`,
+`leave_household`) are RPCs; the quantity ones are idempotent through a client `change_id`.
 
-Items belong to a **household**, never to an individual user. Row Level Security is the
-access-control mechanism: a user may read/write an item only if a `household_members` row links them
-to that item's `household_id`.
+Nobody signs up alone (signup is disabled): the admin invites accounts from the Supabase dashboard
+and manages households with `supabase/scripts/*.sql` (docs/adr/0001). Every schema or RLS change
+needs a pgTAP test in `supabase/tests/`.
 
 ## Current state: placeholder persistence
 
