@@ -1,5 +1,6 @@
-# Build and test on every push and pull request, then deploy to Cloudflare Pages:
-# pushes to main go to production, pull requests get their own preview URL.
+# Build and test on every push and pull request. Pushes to main then apply the database
+# migrations to Supabase and deploy the app to Cloudflare Pages. Pull requests are not deployed
+# (docs/adr/0002-no-preview-deploys.md).
 name: CI
 
 on:
@@ -7,10 +8,11 @@ on:
     branches: [main]
   pull_request:
 
-# A newer push to the same branch or PR supersedes the run in progress.
+# A newer push to a PR supersedes the run in progress. Runs on main queue up instead, so a
+# migration is never cut off halfway.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -51,26 +53,72 @@ jobs:
       - run: pulumi install # generates the Supabase SDK in sdks/, then npm install
       - run: npm run typecheck
 
-  deploy:
-    needs: build
-    # Pull requests from forks never see the repository secrets, so they stop at the build.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+  # Applies the migrations to a throwaway Supabase in Docker and runs the pgTAP tests in
+  # supabase/tests, so a broken schema or access rule fails here and never reaches production.
+  db:
     runs-on: ubuntu-latest
-    # The Cloudflare secrets live in two GitHub environments: `production` (only main may use it)
-    # and `preview` (pull requests). Each deploy shows up under the environment with its URL.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx supabase db start
+      - run: npx supabase test db
+
+  # main only: applies new migrations to the production database before the app that needs them
+  # is deployed. The secrets live in the `production` environment.
+  migrate:
+    needs: [build, db]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      # Created by the Pulumi program in infra/ (output supabaseUrl). Not a secret: it is in the
+      # app's Supabase URL.
+      SUPABASE_PROJECT_REF: bdzlldteahgdfovbhcgg
+    steps:
+      - name: Check Supabase credentials
+        id: creds
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::warning::SUPABASE_ACCESS_TOKEN / SUPABASE_DB_PASSWORD are not set; skipping the migrations."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.creds.outputs.ok == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.creds.outputs.ok == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: steps.creds.outputs.ok == 'true'
+      # Without --remote, db push targets the local database. Only migrations not yet recorded in
+      # the remote history are applied.
+      - run: npx supabase db push --remote="$SUPABASE_PROJECT_REF" --password="$SUPABASE_DB_PASSWORD" --skip-vault --yes
+        if: steps.creds.outputs.ok == 'true'
+
+  deploy:
+    needs: [build, migrate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # The Cloudflare secrets live in the `production` GitHub environment (only main may use it).
     environment:
-      name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'production' || 'preview' }}
-      url: ${{ steps.deploy.outputs.alias }}
+      name: production
+      url: https://refillr.pages.dev
     permissions:
       contents: read
-      pull-requests: write # comment the preview URL on the PR
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # Created by the Pulumi program in infra/, not here.
       PROJECT: refillr
-      # On a PR, deploy under the PR's branch name so Pages treats it as a preview.
-      BRANCH: ${{ github.head_ref || github.ref_name }}
       WRANGLER_OUTPUT_FILE_PATH: ${{ github.workspace }}/wrangler-output.jsonl
     steps:
       - name: Check Cloudflare credentials
@@ -100,48 +148,14 @@ jobs:
           path: site
 
       - name: Deploy to Cloudflare Pages
-        id: deploy
         if: steps.creds.outputs.ok == 'true'
         run: |
           # --commit-dirty: the downloaded build sits untracked inside the checkout.
-          npx wrangler pages deploy site --project-name="$PROJECT" --branch="$BRANCH" --commit-dirty=true
-          details=$(jq -c 'select(.type == "pages-deploy-detailed")' "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)
-          url=$(jq -r '.url' <<< "$details")
-          alias=$(jq -r '.alias // .url' <<< "$details")
-          env=$(jq -r '.environment' <<< "$details")
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "alias=$alias" >> "$GITHUB_OUTPUT"
+          npx wrangler pages deploy site --project-name="$PROJECT" --branch=main --commit-dirty=true
+          url=$(jq -r 'select(.type == "pages-deploy-detailed") | .url' "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)
           {
-            echo "### Cloudflare Pages ($env)"
+            echo "### Cloudflare Pages (production)"
             echo ""
-            echo "- Deploy: $url"
-            echo "- Alias: $alias"
+            echo "- Site: https://refillr.pages.dev"
+            echo "- This deploy: $url"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Comment the preview URL on the PR
-        if: steps.creds.outputs.ok == 'true' && github.event_name == 'pull_request'
-        uses: actions/github-script@v8
-        env:
-          URL: ${{ steps.deploy.outputs.url }}
-          ALIAS: ${{ steps.deploy.outputs.alias }}
-        with:
-          script: |
-            const marker = '<!-- cloudflare-pages-preview -->';
-            const body = [
-              marker,
-              `**Preview en Cloudflare Pages**`,
-              ``,
-              `- Este commit: ${process.env.URL}`,
-              `- Última versión de la rama: ${process.env.ALIAS}`,
-              ``,
-              `_Commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`,
-            ].join('\n');
-            const { owner, repo } = context.repo;
-            const issue_number = context.issue.number;
-            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
-            const existing = comments.find((c) => c.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number, body });
-            }
